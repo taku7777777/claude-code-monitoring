@@ -1155,7 +1155,7 @@
                 "value": [
                   {
                     "title": "この workspace の全体像（タスク単体）を開く",
-                    "url": "/d/claude-code-workspace/claude-code-workspace?var-workspace=${__data.fields.workspace}&from=now/d&to=now"
+                    "url": "/d/claude-code-workspace/claude-code-workspace?var-workspace=${__data.fields.workspace}&var-session_id=.*&from=now/d&to=now"
                   }
                 ]
               }

@@ -2989,7 +2989,7 @@
                 "value": [
                   {
                     "title": "この workspace の診断（Context）を開く",
-                    "url": "/d/claude-code-context/claude-code-context?var-workspace=${__data.fields.workspace}&${__url_time_range}"
+                    "url": "/d/claude-code-context/claude-code-context?var-workspace=${__data.fields.workspace}&var-session_id=.*&${__url_time_range}"
                   }
                 ]
               }

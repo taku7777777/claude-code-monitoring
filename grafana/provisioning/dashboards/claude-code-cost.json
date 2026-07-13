@@ -1,0 +1,3004 @@
+{
+  "uid": "claude-code-cost",
+  "title": "Claude Code Cost Optimization",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 0,
+  "tags": [
+    "claude-code",
+    "cost"
+  ],
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "",
+  "timezone": "",
+  "fiscalYearStartMonth": 0,
+  "weekStart": "",
+  "templating": {
+    "list": [
+      {
+        "name": "workspace",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": "label_values(workspace)",
+        "label": "workspace",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "sort": 1,
+        "hide": 0,
+        "definition": "label_values(workspace)",
+        "options": [],
+        "regex": ""
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "施策マーカー",
+        "enable": true,
+        "iconColor": "rgba(255, 96, 96, 1)",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "target": {
+          "expr": "{event_name=\"intervention_marker\", workspace=~\"$workspace\"}",
+          "refId": "Anno"
+        },
+        "expr": "{event_name=\"intervention_marker\", workspace=~\"$workspace\"}"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "概況（単位コスト）",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": [],
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "コスト",
+      "description": "指定期間内に実際に発生しているコストの概算（api_request cost_recalc 合計 = pricing.yaml の単価×実トークンの再計算値。ADR 0006）。仕事量に比例して増えるため、高い=悪ではない。予算/許容範囲との照合だけをここで行い、ROI・効率の判断は CPSO など他の項目で行う。SDK推定(cost_usd)との乖離は「SDK推定との乖離」stat と analyzer [g] で監視。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "プロンプト完遂数",
+      "description": "アウトカム（成果）の代理値。応答完了（Stop）まで完走したプロンプトの数（成功系件数 − failure/abandoned 件数の減算方式 — CONTRACT §3.2）。実測でコスト発生 prompt 数とほぼ一致する (24h: 54 vs 55)。プロンプト送信数 (user_prompt=81) より少ないのは、追い打ち送信・中断・ローカルコマンド等の「完遂に至らなかった送信」を数えないため。完遂=Stop到達であり品質の保証ではない。手動記録はタスク単位のためプロンプト以外も少数含みうる。手動 failure/abandoned は減算で並存する自動 completed を相殺する（Stop 未到達タスクへの記録は1件分の過剰減算になる — CONTRACT §3.2）。手動 success は自動 completed への追加記録のため同一タスクが2件計上されうる (分離不可 — CONTRACT §3.2)。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "(sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome!~\"failure|abandoned\" [$__range])) - (sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome=~\"failure|abandoned\" [$__range])) or vector(0)))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "成果あたりコスト(CPSO)",
+      "description": "コスト ÷ プロンプト完遂数 = 完遂1回あたりの平均コスト。小さいほど良い。コストは仕事量で増えるのが当然なので、効率はこちらで見る: コスト増+CPSO横ばい=仕事が多いだけ(健全) / CPSO上昇=同じ仕事に多く払っている(劣化→診断セクションへ)。分母は完遂数 proxy のため、1つの成果に多くのプロンプトを要する重いタスクの日は自然に上がる。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "(sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))) / ((sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome!~\"failure|abandoned\" [$__range])) - (sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome=~\"failure|abandoned\" [$__range])) or vector(0))))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "コスト/1M実効トークン",
+      "description": "$ ÷ (実効トークン/1M)。実効トークンは入力単価比で重み付けしたトークンなので、この値は「使ったモデルミックスの実効入力単価 ($/MTok)」にほぼ一致し、pricing.yaml の単価（fable=10 / opus=5 / sonnet=3 / haiku=1.5）と同じ目盛りで直接読める。モデル構成が同じならほぼ一定になる設計。上昇=高額モデル比率の増加。CPSO とペアで読む。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "(sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))) / (sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap effective_tokens [$__range])) / 1000000)",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "キャッシュ有効率",
+      "description": "cache_read ÷ (cache_read + cache_creation + input)。プロンプト側トークン全体のうち1/10価格のキャッシュで処理できた割合 (Usage 健康診断と同一式)。高いほど良い(85%以上が健全圏)。下がる要因: 新セッション//clear直後、CLAUDE.md/設定変更直後、キャッシュTTL超えの放置後再開、セッション乱発。注意: 巨大contextを引きずっても率は高く出る(1/10価格でも量が膨大なら$は嵩む)。率=再課金の無駄、量=実効トークン、と役割分担して見る。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.7
+              },
+              {
+                "color": "green",
+                "value": 0.85
+              }
+            ]
+          },
+          "max": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "(sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap cache_read_tokens [$__range]))) / (sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap cache_read_tokens [$__range])) + sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap cache_creation_tokens [$__range])) + sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap input_tokens [$__range])))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "type": "stat",
+      "title": "SDK推定との乖離",
+      "description": "同一イベント集合（cost_recalc_src=\"pricing\"）での (cost_usd合計 − cost_recalc合計) ÷ cost_recalc合計。±数%が正常 (黄 ±10% / 赤 ±25%)。負側への定常的な振れはキャッシュ書込TTL仮定(1h=2.0x)の過大サイン。拡大したら pricing.yaml の単価ズレ（価格改定・新モデル・TTL仮定）を疑い、公式 pricing / 請求と突合して pricing.yaml を是正 → scripts/gen-cost-recalc.py 再生成（RUNBOOK §5）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": -25
+              },
+              {
+                "color": "green",
+                "value": -10
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "100 * (sum(sum_over_time({event_name=\"api_request\"} | cost_recalc_src=\"pricing\" | unwrap cost_usd [$__range])) - sum(sum_over_time({event_name=\"api_request\"} | cost_recalc_src=\"pricing\" | unwrap cost_recalc [$__range]))) / sum(sum_over_time({event_name=\"api_request\"} | cost_recalc_src=\"pricing\" | unwrap cost_recalc [$__range]))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "ベースライン（分布）",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "panels": [],
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "API Request コスト分布",
+      "description": "分位点(p50/p90/p95)ごとに、全体基準＋各workspaceを色分けした縦棒グループ。各群で全体バー(凡例先頭)と比べ、上に出るworkspace＝上振れ/下＝下振れ。色→workspaceは下部凡例。低活動workspaceの高分位点は小標本で不安定な点に注意。cost_recalc(欠損時cost_usd)を全$__range集計。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "xField": "分位点",
+        "showValue": "never",
+        "stacking": "none",
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "fullHighlight": false,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "expr": "quantile_over_time(0.5, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format grp=\"全体\" | label_format q=\"p50\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by (grp, q)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "refId": "B",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "expr": "quantile_over_time(0.5, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format grp=\"{{.workspace}}\" | label_format q=\"p50\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by (grp, q)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "refId": "C",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "expr": "quantile_over_time(0.9, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format grp=\"全体\" | label_format q=\"p90\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by (grp, q)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "refId": "D",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "expr": "quantile_over_time(0.9, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format grp=\"{{.workspace}}\" | label_format q=\"p90\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by (grp, q)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "refId": "E",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "expr": "quantile_over_time(0.95, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format grp=\"全体\" | label_format q=\"p95\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by (grp, q)"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "refId": "F",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "expr": "quantile_over_time(0.95, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format grp=\"{{.workspace}}\" | label_format q=\"p95\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by (grp, q)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum",
+              "include": [
+                "Value #A",
+                "Value #B",
+                "Value #C",
+                "Value #D",
+                "Value #E",
+                "Value #F"
+              ]
+            },
+            "alias": "cost",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(grp|q|cost)$"
+            }
+          }
+        },
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "grp",
+            "rowField": "q",
+            "valueField": "cost"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "q\\grp": "分位点"
+            },
+            "excludeByName": {},
+            "indexByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "API Request コストパーセンタイル",
+      "description": "平均でなく分布で基準化。p50-p90乖離拡大はテール異常シグナル。 全workspace横断のグローバル分位点（by ()で全体集約）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p50"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p90"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "quantile_over_time(0.5, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by ()",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "legendFormat": "p50"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "quantile_over_time(0.9, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by ()",
+          "refId": "B",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "legendFormat": "p90"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "quantile_over_time(0.95, {event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]) by ()",
+          "refId": "C",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "type": "histogram",
+      "title": "Prompt コスト分布",
+      "description": "prompt_id ごとの期間合計コストの分布を workspace 別に積み上げ色分け。「1往復(プロンプト)単位」の分布。山の位置(≒p50)が動いたか / 右裾(外れ値)が伸びたかを分けて見る。外れ値(右裾)が どの workspace 由来か・1つに集中か複数に分散かを色で判断できる。色→workspace は凡例。正確な p50/p90/p95 は analyzer [c]（prompt単位はLogQLで分位点集約不可）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 17
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (prompt_id, workspace) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "workspace"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "bucketSize": 1,
+        "bucketOffset": 0,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "displayName": "${__field.labels.workspace}",
+          "custom": {
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "id": 24
+    },
+    {
+      "id": 38,
+      "type": "stat",
+      "title": "Prompt コストパーセンタイル",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 17
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (prompt_id) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "mode": "reduceFields",
+            "reducers": [
+              "median",
+              "p90",
+              "p95"
+            ],
+            "includeTimeField": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A Median": "p50",
+              "Value #A 90th %": "p90",
+              "Value #A 95th %": "p95"
+            },
+            "excludeByName": {
+              "prompt_id Median": true,
+              "prompt_id 90th %": true,
+              "prompt_id 95th %": true
+            },
+            "indexByName": {}
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "description": "prompt_id ごとの期間合計コストの分位点。上段 api_request 単位(panel右)の prompt 版。per-prompt 合計を出してから Grafana 側で分位点を算出（LogQLは prompt単位の分位点集約不可のため transform で計算）。cost_recalc(欠損時cost_usd)基準。左ヒストグラムの山(≒p50)・右裾(p95)の数値裏付け。"
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "バーンレート / 予算",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "panels": [],
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "コスト($/d)",
+      "description": "1日あたり平均コスト（期間コスト ÷ レンジ日数）。黄120/橙480/赤1200 USD/d（旧 $/h 閾値 5/20/50 を×24して発火条件を維持）。コストは pricing.yaml（単価SSOT）×実トークンの再計算値 cost_recalc（ADR 0006）。SDK推定 cost_usd との乖離は概況の乖離 stat / analyzer [g] で監視。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 120
+              },
+              {
+                "color": "orange",
+                "value": 480
+              },
+              {
+                "color": "red",
+                "value": 1200
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) / ($__range_s / 86400)",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "月次コスト見込",
+      "description": "現ペース×30日。予算線と比較して着地を管理。 コストは pricing.yaml（単価SSOT）×実トークンの再計算値 cost_recalc（collector が取り込み時に計算。ADR 0006）。SDK推定 cost_usd との乖離は概況の乖離 stat / analyzer [g] で監視し、請求とは月次で突合する。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) / ($__range_s / 86400) * 30",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "日次コスト推移",
+      "description": "1日ビンのコスト合計（min interval=1d で日次バー）。トレンドと施策前後を照合。短レンジや3日未満のデータでは本数が少なく意味を持たない。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 70,
+            "showPoints": "always",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "pointSize": 5,
+            "barAlignment": 0
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__interval]))",
+          "refId": "A",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "legendFormat": "日次コスト"
+        }
+      ],
+      "interval": "1d"
+    },
+    {
+      "id": 14,
+      "type": "row",
+      "title": "効果検証（施策ログ / 前後の傾向）",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 31
+      },
+      "panels": [],
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "日次 コスト/1M実効トークン（施策前後）",
+      "description": "日次の単位コスト（≒使ったモデルの平均入力単価）に施策マーカーを重畳。モデル構成を変える施策(model_switch/subagent委任)の前後を目視で見る。量削減施策(caching/context削減等)はこの指標を動かさないため、日次コスト実額(panel13)/CPSOで見る。厳密なノイズ帯(I-MR X̄±2.66·MR̄)は analyzer [f] を参考として使う（低N・交絡下で過信しない）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "always",
+            "spanNulls": false,
+            "axisPlacement": "auto",
+            "pointSize": 5
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [1d])) / (sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap effective_tokens [1d])) / 1000000)",
+          "refId": "A",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "legendFormat": "コスト/1M実効トークン"
+        }
+      ],
+      "interval": "1d"
+    },
+    {
+      "id": 16,
+      "type": "table",
+      "title": "施策ジャーナル",
+      "description": "intervention_marker のログ（施策の実行履歴）。全時系列パネルに同じ縦線 annotation が重畳される。直近が上。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "{event_name=\"intervention_marker\", workspace=~\"$workspace\"}",
+          "refId": "A",
+          "queryType": "range",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "labels",
+            "format": "json",
+            "replace": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(Time|category|description|intervention_id|scope|workspace)$"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "直近の task_outcome",
+      "description": "task_outcome のログ。outcome/outcome_proxy を確認。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "{event_name=\"task_outcome\", workspace=~\"$workspace\"}",
+          "refId": "A",
+          "queryType": "range",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "labels",
+            "format": "json",
+            "replace": false
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(Time|outcome|outcome_proxy|note|workspace|work_type|session_id)$"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "row",
+      "title": "診断（寄与度・帰属）",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 48
+      },
+      "panels": [],
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      }
+    },
+    {
+      "id": 19,
+      "type": "table",
+      "title": "コストドライバ prompt別 top15",
+      "description": "prompt別コストの上位15件（降順）と占有率（総額に対するシェア）。パレート: まず直す vital few を選ぶ。占有率が上位数件に集中していれば少数を潰せば効く、各数%で横並びなら分散＝横断施策向き。行リンクで Prompt明細へ遷移。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 49
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prompt_id"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Prompt明細を開く",
+                    "url": "/d/claude-code-prompt/claude-code-prompt?var-prompt_id=${__data.fields.prompt_id}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "占有率"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "max",
+                "value": 0.1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "queryType": "instant",
+          "range": false,
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (prompt_id) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "queryType": "instant",
+          "range": false,
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (prompt_id) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) / on() group_left() sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "prompt_id",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Value #A",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {
+            "limitField": 15
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time #A": true,
+              "Time #B": true,
+              "Time": true
+            },
+            "renameByName": {
+              "Value #A": "コスト (USD)",
+              "Value #B": "占有率"
+            },
+            "indexByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "piechart",
+      "title": "work_type別コスト",
+      "description": "work_type別のコスト寄与。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 12,
+        "y": 49
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": true
+        },
+        "pieType": "pie",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (work_type) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{work_type}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "piechart",
+      "title": "model別コスト",
+      "description": "model別のコスト寄与。上位モデルの単価影響を把握。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 49
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "custom": {
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": true
+        },
+        "pieType": "pie",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (model) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{model}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "bargauge",
+      "title": "query_source別コスト",
+      "description": "query_source別コスト（降順）。repl_main_thread=本体対話、agent:*=サブエージェント、away_summary/prompt_suggestion/compact/generate_session_title 等=裏で自動発生する背景コスト。機能オフ・頻度調整で削れる箇所を探す。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 58
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [],
+          "fields": "",
+          "values": true
+        },
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum by (query_source) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))",
+          "refId": "A",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{query_source}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "Value #A",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "実効トークン vs 生トークン",
+      "description": "価格ウェイト正規化(実効)と単純合計(生)の乖離。キャッシュ活用度の別視点。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 58
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap effective_tokens [1h]))",
+          "refId": "A",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "legendFormat": "実効トークン"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap cache_read_tokens [1h])) + sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap input_tokens [1h])) + sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap cache_creation_tokens [1h])) + sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap output_tokens [1h]))",
+          "refId": "B",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "legendFormat": "生トークン合計"
+        }
+      ],
+      "interval": "1h"
+    },
+    {
+      "id": 40,
+      "type": "stat",
+      "title": "キャッシュ再利用倍率（read÷creation）",
+      "description": "cache_read ÷ cache_creation（期間内）。書込は入力の2.0倍・読みは0.1倍（1h TTL — CONTRACT §5）のため、書込プレミアム(+1.0)を読みの節約(−0.9/回)で回収する損益分岐は **1.11**（価格構造から導出できる絶対閾値）。<1.11 赤 = 書くだけ書いて捨てている（短命セッションの乱発・TTL失効の多発）。黄緑の境界(3)は初期案・実測で較正。有効率（概況）が「構成」、本パネルが「回収」、量は実効トークンが担う3軸の1つ。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap cache_read_tokens [$__range])) / sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap cache_creation_tokens [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1.11
+              },
+              {
+                "color": "green",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 41,
+      "type": "stat",
+      "title": "TTL跨ぎ再開回数（放置>1h）",
+      "description": "wait_time_observed の duration_seconds > 3600（現キャッシュ TTL）の件数（期間内）。失効後の再開は context 再構築（読みの約20倍）を払う。「セッションを畳む」（O3）の効果検証にも使う。無色 — 適正回数は働き方次第のため自己基準で観察。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 66,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({event_name=\"wait_time_observed\", workspace=~\"$workspace\"} | duration_seconds > 3600 [$__range])) or vector(0)",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "サブエージェント（委任率と適切さ）",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      },
+      "panels": [],
+      "id": 25
+    },
+    {
+      "type": "stat",
+      "title": "サブエージェント委任率（コスト比）",
+      "description": "本体(repl_main_thread)+サブエージェントの合計コストに占める agent:* の割合。探索・調査・レビューの多い期間で 0% に張り付いている場合、広域探索を main context で行っており委任の余地がある（Context の取り込み/生成比 top10 と突合）。逆に高委任率なのに CPSO が悪化していれば過剰 fan-out（重複探索・過剰並列）を疑う。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 0,
+        "y": 73
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=~\"agent:.*\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))) / (sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=~\"agent:.*|repl_main_thread\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])))",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 26
+    },
+    {
+      "type": "stat",
+      "title": "Agent 呼び出し回数（期間内）",
+      "description": "本体スレッドが Agent(subagent) ツールを起動した回数（tool_decision ベース）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 5,
+        "y": 73
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({event_name=\"tool_decision\", workspace=~\"$workspace\"} | tool_name=\"Agent\" [$__range]))",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 27
+    },
+    {
+      "type": "stat",
+      "title": "サブエージェント平均コスト（$/起動）",
+      "description": "agent:* の合計コスト ÷ Agent 呼び出し回数。ベースライン化して急騰を検知する。高騰時は agent種別×モデルのテーブルで「軽作業に重いモデル」を確認。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 9,
+        "y": 73
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=~\"agent:.*\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))) / (sum(count_over_time({event_name=\"tool_decision\", workspace=~\"$workspace\"} | tool_name=\"Agent\" [$__range])))",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 28
+    },
+    {
+      "type": "timeseries",
+      "title": "本体 vs サブエージェント コスト推移",
+      "description": "1時間ビンの増分。委任した週としない週の構成変化を見る。施策マーカーと重ねて subagent_policy 施策の before/after 照合にも使う。（注: 1hビンのため、凡例の Total は表示期間の端で期間外を含むことがある。正確な期間合計は上の Stat / 委任率を参照）",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 11,
+        "x": 13,
+        "y": 73
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=\"repl_main_thread\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [1h]))",
+          "legendFormat": "本体",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=~\"agent:.*\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [1h]))",
+          "legendFormat": "サブエージェント",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "stacking": {
+              "mode": "normal"
+            },
+            "showPoints": "never",
+            "barAlignment": 0
+          }
+        },
+        "overrides": []
+      },
+      "id": 29
+    },
+    {
+      "type": "table",
+      "title": "agent種別 × モデル コスト（期間内）",
+      "description": "どの agent 種別が・どのモデルで・いくら使ったか。「使い方の適切さ」の主検査点: 検索/探索系 agent が高額モデル（Fable/Opus）で動いていたら過剰スペック。同一種別の重複起動が多い場合はプロンプト側の指示を見直す。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 13,
+        "x": 0,
+        "y": 78
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "topk(15, sum by (query_source, model) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=~\"agent:.*\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value #A": "コスト (USD)",
+              "Value": "コスト (USD)"
+            },
+            "indexByName": {}
+          }
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "コスト (USD)",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "id": 30
+    },
+    {
+      "id": 36,
+      "type": "stat",
+      "title": "委任逃し率",
+      "description": "「main の取り込み/生成比 >15 なのに Agent 起動が無かった prompt」の割合（期間内）。委任すべきだった依頼をどれだけ main で抱えたか。高止まりなら委任習慣の施策（「探索は必ず委任」等）の入口。判定は自己基準（閾値は実測分布で較正するまで無色）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 85,
+        "w": 5,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "(count((sum by (prompt_id) (sum_over_time({event_name=\"api_request\", query_source=\"repl_main_thread\", workspace=~\"$workspace\"} | unwrap cache_creation_tokens [$__range]))) / (sum by (prompt_id) (sum_over_time({event_name=\"api_request\", query_source=\"repl_main_thread\", workspace=~\"$workspace\"} | unwrap output_tokens [$__range]))) > 15 unless sum by (prompt_id) (count_over_time({event_name=\"tool_decision\"} | tool_name=\"Agent\" [$__range]))) or vector(0)) / count(sum by (prompt_id) (count_over_time({event_name=\"api_request\", query_source=\"repl_main_thread\", workspace=~\"$workspace\"} [$__range])))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 37,
+      "type": "table",
+      "title": "prompt別 Agent起動数 top10",
+      "description": "1つの依頼で何回 Agent を起動したか（tool_decision）の上位。過剰 fan-out（重複探索・とりあえず agent）の犯人特定。意図した並列（レビュー等）なら想定内として閉じる。行クリックで Prompt明細へ。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 85,
+        "w": 11,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "topk(10, sum by (prompt_id) (count_over_time({event_name=\"tool_decision\"} | tool_name=\"Agent\" [$__range])))",
+          "queryType": "instant"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value #A": "起動数"
+            },
+            "indexByName": {
+              "prompt_id": 0,
+              "Value #A": 1
+            }
+          }
+        }
+      ],
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "起動数",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prompt_id"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 320
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "この prompt の明細を表示",
+                    "url": "/d/claude-code-prompt/claude-code-prompt?var-prompt_id=${__data.fields.prompt_id}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 39,
+      "type": "stat",
+      "title": "委任の産出/構築比（output÷creation）",
+      "description": "agent 側の output_tokens ÷ cache_creation_tokens（期間内）。委任は起動ごとに prefix と使い捨て context を構築するため、この比が低い = 1起動あたりの仕事が小さすぎる（細切れ委任・過剰 fan-out）。低下傾向なら依頼をまとめる・main 直に戻す。自己基準（無色）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 85,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(sum_over_time({event_name=\"api_request\", query_source=~\"agent:.*\", workspace=~\"$workspace\"} | unwrap output_tokens [$__range])) / sum(sum_over_time({event_name=\"api_request\", query_source=~\"agent:.*\", workspace=~\"$workspace\"} | unwrap cache_creation_tokens [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "noValue": "委任なし",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "type": "row",
+      "title": "タスク（workspace）別サマリ / 前週比較",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 92
+      },
+      "panels": [],
+      "id": 31
+    },
+    {
+      "type": "stat",
+      "title": "コスト 前週比",
+      "description": "同じ長さの期間を7日前と比較した増減率。+30%超で §2 の要因分析へ (RUNBOOK)。データが7日分溜まるまで No data。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 93
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))) / (sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range] offset 7d))) - 1",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.3
+              },
+              {
+                "color": "red",
+                "value": 0.6
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 32
+    },
+    {
+      "type": "stat",
+      "title": "CPSO 前週比",
+      "description": "成果あたりコストの前週比。コスト増でも CPSO が平坦なら「仕事量が増えただけ」、CPSO 上昇なら効率劣化。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 93
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))) / ((sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome!~\"failure|abandoned\" [$__range])) - (sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome=~\"failure|abandoned\" [$__range])) or vector(0))))) / ((sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range] offset 7d))) / ((sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome!~\"failure|abandoned\" [$__range] offset 7d)) - (sum(count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome=~\"failure|abandoned\" [$__range] offset 7d)) or vector(0))))) - 1",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.3
+              },
+              {
+                "color": "red",
+                "value": 0.6
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 33
+    },
+    {
+      "type": "table",
+      "title": "タスク（workspace）別サマリ（期間内）",
+      "description": "タスク=workspace 運用 (CONTRACT §5.5) の週次レビュー用。コスト・実効トークン・成果数・CPSO・prompt数・委任率をタスク横並びで比較する。成果数は Stop 到達の completed を含む弱いプロキシ。過去タスクの長期比較は analyzer のアーカイブ出力を使う。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 93
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (workspace, work_type) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (workspace) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | unwrap effective_tokens [$__range]))"
+        },
+        {
+          "refId": "C",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "(sum by (workspace) (count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome!~\"failure|abandoned\" [$__range])) - (sum by (workspace) (count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome=~\"failure|abandoned\" [$__range])) or (sum by (workspace) (count_over_time({event_name=\"task_outcome\", workspace=~\"$workspace\"} | outcome!~\"failure|abandoned\" [$__range])) * 0)))"
+        },
+        {
+          "refId": "D",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (workspace) (count_over_time({event_name=\"user_prompt\", workspace=~\"$workspace\"} [$__range]))"
+        },
+        {
+          "refId": "E",
+          "instant": true,
+          "queryType": "instant",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (workspace) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=~\"agent:.*\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) or (sum by (workspace) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) * 0)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "workspace",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "CPSO",
+            "mode": "binary",
+            "binary": {
+              "left": "Value #A",
+              "operator": "/",
+              "right": "Value #C"
+            },
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "委任率",
+            "mode": "binary",
+            "binary": {
+              "left": "Value #E",
+              "operator": "/",
+              "right": "Value #A"
+            },
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "Value #A": "コスト (USD)",
+              "Value #B": "実効トークン",
+              "Value #C": "成果数",
+              "Value #D": "prompt数",
+              "Value #E": "委任コスト"
+            },
+            "excludeByName": {},
+            "indexByName": {}
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(workspace|work_type|コスト \\(USD\\)|実効トークン|成果数|prompt数|委任率|CPSO)$"
+            }
+          }
+        }
+      ],
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "コスト (USD)",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "コスト (USD)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPSO"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "委任率"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "実効トークン"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "workspace"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "この workspace の診断（Context）を開く",
+                    "url": "/d/claude-code-context/claude-code-context?var-workspace=${__data.fields.workspace}&${__url_time_range}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "id": 34
+    }
+  ],
+  "links": []
+}

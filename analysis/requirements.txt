@@ -1,0 +1,10 @@
+# analysis/ スクリプト群の依存
+# 価格は best-effort (2026-07)。pricing.yaml のロードに pyyaml、Loki 問い合わせに requests を使う。
+
+pyyaml>=6.0        # pricing.py: pricing.yaml ローダ (必須)
+requests>=2.28     # cost-optimization-analyzer.py: Loki HTTP クエリ (必須)
+
+# --- 任意 (無くても動く) ---------------------------------------------------
+# 変化点検出 (CUSUM) は標準ライブラリのみで自前実装済み。以下は精度向上のオプション。
+# ruptures>=1.1    # PELT 変化点検出 (任意)。未導入時は CUSUM のみ使用。
+# numpy>=1.23      # percentile 計算の高速化 (任意)。未導入時は自前実装で代替。

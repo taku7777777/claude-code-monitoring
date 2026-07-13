@@ -1,0 +1,68 @@
+{
+  "_comment": "Copy this into ~/.claude/settings.json and restart Claude Code. Replace every /ABSOLUTE/PATH/TO with the absolute path to this repository (the dir that contains scripts/). Example: /Users/you/github/claude-code-monitoring/scripts/wait-time-on-stop.sh . JSON has no comments, so this _comment key is ignored by Claude Code and is safe to keep or delete.",
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
+    "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "cumulative",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_LOG_USER_PROMPTS": "1",
+    "OTEL_LOG_TOOL_DETAILS": "1"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/scripts/wait-time-on-prompt.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/scripts/wait-time-on-stop.sh"
+          },
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/scripts/permission-wait-on-resolve.sh"
+          },
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/scripts/task-outcome-on-stop.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/scripts/permission-wait-on-notification.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/scripts/permission-wait-on-resolve.sh"
+          },
+          {
+            "type": "command",
+            "command": "/ABSOLUTE/PATH/TO/scripts/lines-changed-on-tool-use.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

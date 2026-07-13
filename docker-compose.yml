@@ -1,0 +1,96 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.150.1
+    restart: unless-stopped
+    volumes:
+      - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "127.0.0.1:4317:4317"   # OTLP gRPC
+      - "127.0.0.1:4318:4318"   # OTLP HTTP
+    depends_on:
+      - prometheus
+      - loki
+
+  prometheus:
+    image: prom/prometheus:v3.11.3
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=2GB
+      # 突然の電源断でWALごと飛ばないよう、ブロック確定間隔を短縮（既定2h→30m）
+      - --storage.tsdb.min-block-duration=30m
+      - --storage.tsdb.max-block-duration=30m
+      - --storage.tsdb.wal-compression
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  loki:
+    image: grafana/loki:3.5.1
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+
+  grafana:
+    image: grafana/grafana:13.0.1
+    restart: unless-stopped
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    ports:
+      - "127.0.0.1:3033:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # ダッシュボードの描画を curl /render で取得するための headless renderer
+      # (例: /render/d/claude-code-usage/claude-code-usage?kiosk&width=1800&height=2400)
+      - GF_RENDERING_SERVER_URL=http://renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
+      # renderer との共有トークン (ローカル専用値。renderer 側 AUTH_TOKEN と一致させる)
+      - GF_RENDERING_RENDERER_TOKEN=local-render-token
+      # Today ページの週次上限 (月曜00:00起点) の now/w をブラウザ locale に依存させない
+      - GF_DATE_FORMATS_DEFAULT_WEEK_START=monday
+    depends_on:
+      - prometheus
+      - loki
+
+  # Grafana の /render を有効化する画像レンダラ (docker ネットワーク内のみ・ポート非公開)
+  renderer:
+    image: grafana/grafana-image-renderer:3.12.9
+    restart: unless-stopped
+    environment:
+      - AUTH_TOKEN=local-render-token
+
+  # prompt_summary (CONTRACT §3.4) を last-wins 追記する常駐テイラー。
+  # api_request を30秒ごとに集計し、活動のあった prompt のサマリを OTLP で送る。
+  # 発火イベント(Stop hook)に依存しないため中断・放置 prompt も漏れない。
+  prompt-summary-tailer:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    command: ["python", "/app/prompt_summary_tailer.py"]
+    volumes:
+      - ./scripts/prompt_summary_tailer.py:/app/prompt_summary_tailer.py:ro
+    environment:
+      - LOKI_URL=http://loki:3100
+      - OTLP_URL=http://otel-collector:4318/v1/logs
+      - INTERVAL=30
+    depends_on:
+      - loki
+      - otel-collector
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:

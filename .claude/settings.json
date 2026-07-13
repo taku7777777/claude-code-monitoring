@@ -1,0 +1,5 @@
+{
+  "env": {
+    "OTEL_RESOURCE_ATTRIBUTES": "workspace=claude-code-monitoring,work_type=main-dev"
+  }
+}

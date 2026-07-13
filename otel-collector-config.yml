@@ -1,0 +1,99 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    # 古い session.id の系列を 3h で破棄してカーディナリティを抑える
+    metric_expiration: 180m
+
+  # Loki 3.x 公式 OTLP endpoint。deprecated な lokiexporter ではなく
+  # otlp_http で /otlp/v1/logs に直接送るのが現行推奨パス。
+  otlp_http/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  debug:
+    verbosity: basic
+
+processors:
+  batch:
+    timeout: 5s
+
+  # workspace / work_type の resource attribute を data point attribute に昇格させる。
+  # 意図した属性だけを選択的に昇格させ、カーディナリティ爆発を避ける。
+  # session_id は metrics pipeline 側でのみ delete（logs には残す）。
+  transform/promote_workspace:
+    error_mode: ignore
+    metric_statements:
+      - context: datapoint
+        statements:
+          - set(attributes["workspace"], resource.attributes["workspace"]) where resource.attributes["workspace"] != nil
+          - set(attributes["workspace"], "(unset)") where attributes["workspace"] == nil
+          - set(attributes["work_type"], resource.attributes["work_type"]) where resource.attributes["work_type"] != nil
+          - set(attributes["work_type"], "(unset)") where attributes["work_type"] == nil
+          - delete_key(attributes, "session.id")
+          - delete_key(attributes, "session_id")
+
+  # logs 側でも workspace/work_type を resource → log attribute に複製し、
+  # 派生値 context_tokens / effective_tokens を Collector 側で1回だけ事前計算する。
+  # （複数フィールドの算術をダッシュボードで毎回書くと panel 間で値が乖離する — 12.6 の教訓）
+  transform/promote_workspace_logs:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(log.attributes["workspace"], resource.attributes["workspace"]) where resource.attributes["workspace"] != nil
+          - set(log.attributes["workspace"], "(unset)") where log.attributes["workspace"] == nil
+          - set(log.attributes["work_type"], resource.attributes["work_type"]) where resource.attributes["work_type"] != nil
+          - set(log.attributes["work_type"], "(unset)") where log.attributes["work_type"] == nil
+          # context_tokens = cache_read_tokens + cache_creation_tokens
+          - set(log.attributes["context_tokens"], Int(log.attributes["cache_read_tokens"]) + Int(log.attributes["cache_creation_tokens"])) where log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          # effective_tokens = 価格ウェイト正規化した実効トークン（効率比の共通分母 / CONTRACT §5）
+          # input*1.0 + cache_read*0.1 + cache_creation*1.25 + output*5.0
+          # (output ウェイトは pricing.yaml の output/input 価格比 = 5.0 に一致させる / CONTRACT §5)
+          - set(log.attributes["effective_tokens"], Double(log.attributes["input_tokens"]) + Double(log.attributes["cache_read_tokens"]) * 0.1 + Double(log.attributes["cache_creation_tokens"]) * 1.25 + Double(log.attributes["output_tokens"]) * 5.0) where log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+
+  # cost_recalc = 単価表 (pricing/pricing.yaml SSOT) × 実トークンの再計算コスト (USD)。
+  # ダッシュボードのコスト表示はこの値を使う (cost_usd = SDK推定は乖離監視用に併存)。
+  # 中身は scripts/gen-cost-recalc.py が pricing.yaml から生成する (ADR 0006)。
+  transform/cost_recalc:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+      # BEGIN GENERATED cost_recalc
+      # 生成: scripts/gen-cost-recalc.py — 手動編集禁止 (日付は焼き込まない:
+      # --check が生成日でなく価格の実差分だけを検知できるようにするため)
+      # pricing.yaml 変更時は再生成して collector を再起動すること (ADR 0006)
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 10 + Double(log.attributes["cache_read_tokens"]) * 1 + Double(log.attributes["cache_creation_tokens"]) * 20 + Double(log.attributes["output_tokens"]) * 50) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-fable-5(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 1.5 + Double(log.attributes["cache_read_tokens"]) * 0.15 + Double(log.attributes["cache_creation_tokens"]) * 3 + Double(log.attributes["output_tokens"]) * 7.5) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-haiku-4-5(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 10 + Double(log.attributes["cache_read_tokens"]) * 1 + Double(log.attributes["cache_creation_tokens"]) * 20 + Double(log.attributes["output_tokens"]) * 50) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-mythos-5(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 5 + Double(log.attributes["cache_read_tokens"]) * 0.5 + Double(log.attributes["cache_creation_tokens"]) * 10 + Double(log.attributes["output_tokens"]) * 25) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-opus-4-5(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 5 + Double(log.attributes["cache_read_tokens"]) * 0.5 + Double(log.attributes["cache_creation_tokens"]) * 10 + Double(log.attributes["output_tokens"]) * 25) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-opus-4-6(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 5 + Double(log.attributes["cache_read_tokens"]) * 0.5 + Double(log.attributes["cache_creation_tokens"]) * 10 + Double(log.attributes["output_tokens"]) * 25) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-opus-4-7(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 5 + Double(log.attributes["cache_read_tokens"]) * 0.5 + Double(log.attributes["cache_creation_tokens"]) * 10 + Double(log.attributes["output_tokens"]) * 25) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-opus-4-8(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 3 + Double(log.attributes["cache_read_tokens"]) * 0.3 + Double(log.attributes["cache_creation_tokens"]) * 6 + Double(log.attributes["output_tokens"]) * 15) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-sonnet-4-5(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 3 + Double(log.attributes["cache_read_tokens"]) * 0.3 + Double(log.attributes["cache_creation_tokens"]) * 6 + Double(log.attributes["output_tokens"]) * 15) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-sonnet-4-6(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc"], (Double(log.attributes["input_tokens"]) * 3 + Double(log.attributes["cache_read_tokens"]) * 0.3 + Double(log.attributes["cache_creation_tokens"]) * 6 + Double(log.attributes["output_tokens"]) * 15) / 1000000.0) where log.attributes["cost_recalc"] == nil and IsMatch(log.attributes["model"], "^claude-sonnet-5(-[0-9]{8})?$") and log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
+          - set(log.attributes["cost_recalc_src"], "pricing") where log.attributes["cost_recalc"] != nil
+          - set(log.attributes["cost_recalc"], Double(log.attributes["cost_usd"])) where log.attributes["cost_recalc"] == nil and log.attributes["cost_usd"] != nil
+          - set(log.attributes["cost_recalc_src"], "sdk_fallback") where log.attributes["cost_recalc_src"] == nil and log.attributes["cost_recalc"] != nil
+      # END GENERATED cost_recalc
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [transform/promote_workspace, batch]
+      exporters: [prometheus, debug]
+    logs:
+      receivers: [otlp]
+      processors: [transform/promote_workspace_logs, transform/cost_recalc, batch]
+      exporters: [otlp_http/loki, debug]

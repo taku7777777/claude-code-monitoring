@@ -1,0 +1,100 @@
+# Loki single-binary (monolithic) configuration
+# 個人ローカル可視化用途。HA / replication なし、TSDB + filesystem。
+
+auth_enabled: false                    # マルチテナント無効（X-Scope-OrgID 不要）
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095               # コンテナ内のみ（外部公開しない）
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+# prompt_summary (CONTRACT §3.4) は timeUnixNano = prompt開始時刻 で追記される
+# (last-wins 方式)。開始が古い prompt の更新版が out-of-order 棄却されないよう、
+# 受付窓 (= max_chunk_age / 2) を 24h に広げる。ローカル単機なのでメモリ影響は許容。
+ingester:
+  max_chunk_age: 48h
+
+schema_config:
+  configs:
+    - from: 2025-01-01
+      store: tsdb                      # Loki 3.x 推奨
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+
+# retention 90日 (2160h)。タスク=workspace 運用での同曜日参照 (UC2) とタスク長期比較
+# (UC4) のため 30日から延長 (docs/USECASE.md Phase 0)。それ以前の長期比較は analyzer の
+# アーカイブ出力で行う。allow_structured_metadata で OTel attributes を index 圧迫させずに
+# 保持する（label にしない高カーディナリティ属性の受け皿）。
+limits_config:
+  retention_period: 2160h
+  ingestion_rate_mb: 8
+  ingestion_burst_size_mb: 16
+  max_query_series: 5000
+  max_entries_limit_per_query: 5000
+  allow_structured_metadata: true
+  # OTLP attribute → Loki ラベル/structured metadata のマッピング制御。
+  # Loki 3.x では Collector 側の loki.resource.labels ヒントは効かず、
+  # ここで明示的に index_label に昇格させる必要がある。
+  # ドット (.) はラベル名でアンダースコアに自動変換される（service.name → service_name）。
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes:
+            - workspace
+            - work_type
+    log_attributes:
+      # log_attributes はデフォルトで structured_metadata 行きなので、
+      # ラベルにしたいものだけ index_label で明示昇格する。
+      # event.name は全イベントが持つ（api_request / task_outcome / intervention_marker 等を識別）。
+      # query_source は main/subagent を識別。
+      # workspace / work_type は resource 属性からも昇格するが、resource 属性が無い
+      # イベントは collector が log 属性側に "(unset)" を付与するため、log 属性経由でも
+      # 昇格させる（両経路で同値。log 属性のみだと (unset) がストリームセレクタで
+      # 選択できない — 2026-07-12 の実測バグ修正）。
+      - action: index_label
+        attributes:
+          - event.name
+          - query_source
+          - workspace
+          - work_type
+
+# retention_enabled を忘れると retention_period が空振りしてディスクが膨らむ
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+  compaction_interval: 10m
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-temp
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: false
+
+analytics:
+  reporting_enabled: false

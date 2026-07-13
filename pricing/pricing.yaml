@@ -1,0 +1,77 @@
+# =============================================================================
+# pricing.yaml — 価格表 SSOT (Single Source of Truth)
+# =============================================================================
+# 全ての金額は USD / 1,000,000 tokens (per 1M tokens)。
+#
+# !!! best-effort 値 — 利用前に必ず公式 pricing ページ・実請求と突合すること !!!
+# 2026-07-12: SDK 推定 (cost_usd) との突合で経験的に校正済み (含意単価の逆算。
+# opus/fable/sonnet はバケット別逆算で ±0.1% 一致)。ただし SDK 推定自体も公式請求では
+# ないため、月次で console.anthropic.com の請求と突合し、乖離があれば本ファイルを是正する
+# (RUNBOOK §5)。本ファイル変更後は scripts/gen-cost-recalc.py を再実行して collector の
+# cost_recalc 計算式を再生成すること (ADR 0006)。
+#
+# 唯一のローダは analysis/pricing.py。他コードから直接パースしないこと (DRY)。
+# 例外: otel-collector-config.yml の cost_recalc ブロックは scripts/gen-cost-recalc.py が
+# pricing.py 経由で生成するコピー (手動編集禁止)。
+# =============================================================================
+
+models:
+  # tokenizer_generation:
+  #   new = 新世代トークナイザ (同一テキストで約 +30% トークン化)
+  #   old = 旧世代トークナイザ
+  # 世代跨ぎの反実仮想 (counterfactual) では tokenizer.new_vs_old_ratio で補正する。
+  #
+  # モデル ID は日付サフィックス付き (例: claude-haiku-4-5-20251001) でも解決される
+  # (pricing.py が -YYYYMMDD を剥がして照合)。
+
+  claude-opus-4-8:  {input: 5,  output: 25, tokenizer_generation: new, effective_from: 2025-01-01}
+  claude-opus-4-7:  {input: 5,  output: 25, tokenizer_generation: new}
+  claude-opus-4-6:  {input: 5,  output: 25, tokenizer_generation: old}
+  claude-opus-4-5:  {input: 5,  output: 25, tokenizer_generation: old}
+  claude-opus-4-1:  {input: 15, output: 75, tokenizer_generation: old, deprecated: true}   # 旧世代・非推奨
+
+  # 2026-07-12 校正: 実測の含意単価はちょうど 3/15 (旧記載の 2/10 は誤り。
+  # 「2026-09 値上げ予定」としていた値が現行価格だった)
+  claude-sonnet-5:   {input: 3, output: 15, tokenizer_generation: new}
+
+  claude-sonnet-4-6: {input: 3, output: 15, tokenizer_generation: old}
+  claude-sonnet-4-5: {input: 3, output: 15, tokenizer_generation: old}
+
+  # 2026-07-12 校正: SDK 含意単価は 1.5/7.5 (公式初出時の 1/5 から改定された模様。要請求突合)
+  claude-haiku-4-5:  {input: 1.5, output: 7.5, tokenizer_generation: old}
+
+  claude-fable-5:    {input: 10, output: 50, tokenizer_generation: new}
+  claude-mythos-5:   {input: 10, output: 50, tokenizer_generation: new}
+
+  # 長コンテキスト割増 (>200K 入力コンテキストの 1M モデル) を課金する場合は
+  # 対象モデルに long_context を定義する (multiplier は input 系に in、output に out を乗算):
+  #   claude-fable-5:
+  #     input: 10
+  #     output: 50
+  #     long_context: {threshold: 200000, input_multiplier: 2.0, output_multiplier: 1.5}
+  # 2026-07-12 実測: SDK 推定は >200K でも割増なしのベース単価で計算している
+  # (fable >200K バケット含意単価 = $10.0 ちょうど)。実請求に割増が現れたら
+  # ここで有効化して校正する。
+
+# キャッシュ係数 (input 価格に対する倍率)
+cache:
+  read_multiplier: 0.1       # cache read = 通常入力の 0.1x
+  write_5m_multiplier: 1.25  # cache write (5分 TTL) = 通常入力の 1.25x
+  write_1h_multiplier: 2.0   # cache write (1時間 TTL) = 通常入力の 2.0x
+  # 再計算でリクエストごとの TTL が分からない場合の既定仮定。
+  # 2026-07-12 実測: Claude Code のキャッシュ書込は実質 2.0x (1h TTL) で課金されている
+  # (opus 両バケット・fable >200K バケットで w=2.0 が含意単価をちょうど整数にする)。
+  # telemetry は cache_creation の TTL 内訳を持たないため単一仮定で近似する
+  # (5m/1h 混在時は数%過大になりうる)。
+  write_default_ttl: "1h"
+
+# リクエスト修飾子 (最終コストに対する乗算係数)
+modifiers:
+  batch: 0.5   # Batch API = 0.5x (半額)
+  fast: 2.0    # Fast/priority tier = 2.0x
+  geo_us: 1.1  # US geo 指定 = 1.1x
+
+# トークナイザ世代差の補正パラメータ
+tokenizer:
+  new_vs_old_ratio: 1.3
+  note: "新世代は同一テキストで約 +30% トークン化。世代跨ぎ反実仮想の補正に使用 (old->new は増, new->old は減)。"

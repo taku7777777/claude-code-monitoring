@@ -98,6 +98,7 @@
       "id": 2,
       "type": "stat",
       "title": "セッション数（期間内）",
+      "description": "選択期間・workspace 内で api_request が1件以上あった session_id のユニーク数。",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -105,8 +106,8 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 24,
-        "h": 3
+        "w": 12,
+        "h": 4
       },
       "targets": [
         {
@@ -146,17 +147,69 @@
       }
     },
     {
+      "id": 3,
+      "type": "stat",
+      "title": "合計コスト（期間内）",
+      "description": "選択期間・workspace 内の全 api_request のコスト合計（cost_recalc 優先、無ければ cost_usd）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))",
+          "queryType": "instant"
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B0B7C3"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 1,
       "type": "table",
       "title": "セッション一覧（コスト/context/リクエスト数でソート・session_id で検索）",
-      "description": "この workspace のセッション一覧。列ヘッダでソート、session_id 列は検索可。行クリックで Session Detail（このセッションで絞った Usage）へ遷移。",
+      "description": "この workspace のセッション一覧。列ヘッダでソート、session_id 列は検索可。行クリックで Session Detail（このセッションで絞った Usage）へ遷移。読み方: 開始/最終更新でいつ動いていたか、継続時間で長さ、$/1M実効で単価効率（高い＝割高／要最適化）、最大context で圧迫度を把握。",
       "datasource": {
         "type": "loki",
         "uid": "loki"
       },
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 4,
         "w": 24,
         "h": 20
       },
@@ -187,6 +240,33 @@
           },
           "expr": "sum by (session_id) (count_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} [$__range]))",
           "queryType": "instant"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (session_id) (sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format eff_m=\"{{ divf .effective_tokens 1000000 }}\" | unwrap eff_m [$__range]))",
+          "queryType": "instant"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "min by (session_id) (min_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format ts_ms=\"{{ divf .observed_timestamp 1000000 }}\" | unwrap ts_ms [$__range]))",
+          "queryType": "instant"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max by (session_id) (max_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format ts_ms=\"{{ divf .observed_timestamp 1000000 }}\" | unwrap ts_ms [$__range]))",
+          "queryType": "instant"
         }
       ],
       "transformations": [
@@ -204,22 +284,65 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time 1": true,
-              "Time 2": true,
-              "Time 3": true,
-              "Time": true
-            },
             "renameByName": {
               "Value #A": "コスト",
               "Value #B": "最大context",
-              "Value #C": "リクエスト数"
+              "Value #C": "リクエスト数",
+              "Value #D": "実効M",
+              "Value #E": "開始日時",
+              "Value #F": "最終更新"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "コスト",
+              "operator": "/",
+              "right": "実効M"
             },
+            "alias": "$/1M実効",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "最終更新",
+              "operator": "-",
+              "right": "開始日時"
+            },
+            "alias": "継続時間",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true,
+              "Time 5": true,
+              "Time 6": true,
+              "実効M": true
+            },
+            "renameByName": {},
             "indexByName": {
               "session_id": 0,
-              "Value #A": 1,
-              "Value #B": 2,
-              "Value #C": 3
+              "開始日時": 1,
+              "最終更新": 2,
+              "継続時間": 3,
+              "コスト": 4,
+              "$/1M実効": 5,
+              "リクエスト数": 6,
+              "最大context": 7
             }
           }
         },
@@ -261,7 +384,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 300
+                "value": 260
               },
               {
                 "id": "links",
@@ -271,6 +394,58 @@
                     "url": "/d/claude-code-session/claude-code-session?var-workspace=$workspace&var-session_id=${__data.fields.session_id}&${__url_time_range}"
                   }
                 ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "開始日時"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "最終更新"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "継続時間"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
               }
             ]
           },
@@ -297,7 +472,27 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "最大context"
+              "options": "$/1M実効"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "リクエスト数"
             },
             "properties": [
               {
@@ -310,14 +505,14 @@
               },
               {
                 "id": "custom.width",
-                "value": 110
+                "value": 100
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "リクエスト数"
+              "options": "最大context"
             },
             "properties": [
               {

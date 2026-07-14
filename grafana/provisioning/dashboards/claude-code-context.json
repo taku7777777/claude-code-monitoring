@@ -65,7 +65,7 @@
           "type": 1,
           "refId": "LokiVariableQueryEditor-VariableQuery"
         },
-        "multi": true,
+        "multi": false,
         "includeAll": true,
         "allValue": ".*",
         "refresh": 2,

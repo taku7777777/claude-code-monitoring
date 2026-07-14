@@ -29,7 +29,7 @@
         "query": "label_values(workspace)",
         "label": "workspace",
         "refresh": 2,
-        "multi": true,
+        "multi": false,
         "includeAll": true,
         "allValue": ".*",
         "current": {

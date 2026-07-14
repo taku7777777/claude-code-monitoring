@@ -110,7 +110,7 @@
         },
         "refresh": 2,
         "sort": 1,
-        "multi": true,
+        "multi": false,
         "includeAll": true,
         "allValue": ".*",
         "current": {},

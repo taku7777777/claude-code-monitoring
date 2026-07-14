@@ -10,7 +10,7 @@
   "editable": true,
   "graphTooltip": 0,
   "time": {
-    "from": "now-1h",
+    "from": "now-7d",
     "to": "now"
   },
   "timepicker": {},
@@ -46,6 +46,41 @@
   },
   "templating": {
     "list": [
+      {
+        "name": "workspace",
+        "type": "query",
+        "label": "workspace",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "definition": "label_values(workspace)",
+        "query": {
+          "label": "workspace",
+          "stream": "",
+          "type": 1,
+          "refId": "LokiVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {},
+        "options": [],
+        "hide": 0
+      },
+      {
+        "name": "session_id",
+        "type": "textbox",
+        "label": "session_id",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0
+      },
       {
         "type": "textbox",
         "name": "wfrom",
@@ -246,7 +281,7 @@
             "uid": "loki"
           },
           "maxLines": 2000,
-          "expr": "{event_name=\"prompt_summary\"} | end_ms >= ${wfrom} | start_ms <= ${wto}"
+          "expr": "{event_name=\"prompt_summary\", workspace=~\"$workspace\"} | session_id=~\"$session_id\" | end_ms >= ${wfrom} | start_ms <= ${wto}"
         }
       ],
       "transformations": [
@@ -595,5 +630,50 @@
       }
     }
   ],
-  "links": []
+  "links": [
+    {
+      "type": "link",
+      "title": "Usage",
+      "url": "/d/claude-code-usage/claude-code-usage",
+      "tags": [],
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": true,
+      "keepTime": false,
+      "icon": "external link"
+    },
+    {
+      "type": "link",
+      "title": "Cost Optimization",
+      "url": "/d/claude-code-cost/claude-code-cost",
+      "tags": [],
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": true,
+      "keepTime": false,
+      "icon": "external link"
+    },
+    {
+      "type": "link",
+      "title": "Sessions",
+      "url": "/d/claude-code-session-list/claude-code-session-list",
+      "tags": [],
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": true,
+      "keepTime": false,
+      "icon": "external link"
+    },
+    {
+      "type": "link",
+      "title": "Prompts",
+      "url": "/d/claude-code-prompt-list/claude-code-prompt-list",
+      "tags": [],
+      "asDropdown": false,
+      "targetBlank": false,
+      "includeVars": true,
+      "keepTime": false,
+      "icon": "external link"
+    }
+  ]
 }

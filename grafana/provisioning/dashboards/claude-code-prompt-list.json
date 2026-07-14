@@ -261,8 +261,8 @@
     {
       "id": 1,
       "type": "table",
-      "title": "プロンプト一覧（窓に実行が重なるもの・全量）",
-      "description": "窓（wfrom/wto — Today のバークリックで5分窓が渡り、上の『窓開始/窓終了』に表示される）に実行期間が重なるプロンプトを、**真の全体期間・総コスト**で一覧する（prompt_summary — CONTRACT §3.4。テイラーが30秒ごとに last-wins 追記、読みは max 集計で最新版を採用）。開始 = 入力時刻、終了 = 最後の API 呼び出し。中断・放置された依頼も漏れない。直近30秒はサマリ未生成のことがある（テイラーのラグ）。フッタの合計は『窓に重なった依頼の全量合計』（窓内の寄与額ではない）。ページの時間レンジは検索対象範囲（リンク経由では窓終端の48h前〜窓終端）で、窓そのものではない点に注意。",
+      "title": "プロンプト一覧（session/workspace のプロンプト・実コスト）",
+      "description": "一次イベント api_request を prompt_id で集計した実コスト・実効トークンの一覧（コスト = cost_recalc 優先の合計＝セッション/ワークスペースの総コストと一致）。プロンプト文は一次イベント user_prompt から結合。開始 = 最初の API 呼び出し、終了 = 最後の API 呼び出し。取り込み比 = cache_creation / output。フッタ合計 = 表示中プロンプトの総コスト・総実効トークン。窓（wfrom/wto — Today のバークリックで渡る）指定時はその時間窓内の API 呼び出しのみを集計（未指定＝全量）。ページの時間レンジが検索対象範囲。旧 prompt_summary（テイラー）はコストを過小計上するため使用しない。",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -280,8 +280,17 @@
             "type": "loki",
             "uid": "loki"
           },
-          "maxLines": 2000,
-          "expr": "{event_name=\"prompt_summary\", workspace=~\"$workspace\"} | session_id=~\"$session_id\" | end_ms >= ${wfrom} | start_ms <= ${wto}"
+          "maxLines": 5000,
+          "expr": "{event_name=\"api_request\", workspace=~\"$workspace\"} | session_id=~\"$session_id\" | label_format cv=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | label_format ts_ms=\"{{ divf .observed_timestamp 1000000 }}\" | ts_ms >= ${wfrom} | ts_ms <= ${wto}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "maxLines": 5000,
+          "expr": "{event_name=\"user_prompt\", workspace=~\"$workspace\"} | session_id=~\"$session_id\""
         }
       ],
       "transformations": [
@@ -298,62 +307,23 @@
           "options": {
             "conversions": [
               {
-                "targetField": "start_ms",
+                "targetField": "cv",
                 "destinationType": "number"
-              }
-            ]
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
+              },
               {
-                "targetField": "end_ms",
+                "targetField": "ts_ms",
                 "destinationType": "number"
-              }
-            ]
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
+              },
               {
-                "targetField": "cost_total",
+                "targetField": "effective_tokens",
                 "destinationType": "number"
-              }
-            ]
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
+              },
               {
-                "targetField": "eff_total",
+                "targetField": "cache_creation_tokens",
                 "destinationType": "number"
-              }
-            ]
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
+              },
               {
-                "targetField": "creation_main",
-                "destinationType": "number"
-              }
-            ]
-          }
-        },
-        {
-          "id": "convertFieldType",
-          "options": {
-            "conversions": [
-              {
-                "targetField": "output_main",
+                "targetField": "output_tokens",
                 "destinationType": "number"
               }
             ]
@@ -367,40 +337,35 @@
                 "operation": "groupby",
                 "aggregations": []
               },
-              "start_ms": {
+              "ts_ms": {
                 "operation": "aggregate",
                 "aggregations": [
+                  "min",
                   "max"
                 ]
               },
-              "end_ms": {
+              "cv": {
                 "operation": "aggregate",
                 "aggregations": [
-                  "max"
+                  "sum"
                 ]
               },
-              "cost_total": {
+              "effective_tokens": {
                 "operation": "aggregate",
                 "aggregations": [
-                  "max"
+                  "sum"
                 ]
               },
-              "eff_total": {
+              "cache_creation_tokens": {
                 "operation": "aggregate",
                 "aggregations": [
-                  "max"
+                  "sum"
                 ]
               },
-              "creation_main": {
+              "output_tokens": {
                 "operation": "aggregate",
                 "aggregations": [
-                  "max"
-                ]
-              },
-              "output_main": {
-                "operation": "aggregate",
-                "aggregations": [
-                  "max"
+                  "sum"
                 ]
               },
               "prompt": {
@@ -413,13 +378,20 @@
           }
         },
         {
+          "id": "joinByField",
+          "options": {
+            "byField": "prompt_id",
+            "mode": "outer"
+          }
+        },
+        {
           "id": "calculateField",
           "options": {
             "mode": "binary",
             "binary": {
-              "left": "creation_main (max)",
+              "left": "cache_creation_tokens (sum)",
               "operator": "/",
-              "right": "output_main (max)"
+              "right": "output_tokens (sum)"
             },
             "alias": "取り込み比",
             "replaceFields": false
@@ -428,19 +400,22 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {},
+            "excludeByName": {
+              "cache_creation_tokens (sum)": true,
+              "output_tokens (sum)": true
+            },
             "renameByName": {
-              "start_ms (max)": "開始",
-              "end_ms (max)": "終了",
-              "cost_total (max)": "コスト",
-              "eff_total (max)": "実効tok",
+              "ts_ms (min)": "開始",
+              "ts_ms (max)": "終了",
+              "cv (sum)": "コスト",
+              "effective_tokens (sum)": "実効tok",
               "prompt (lastNotNull)": "prompt"
             },
             "indexByName": {
-              "start_ms (max)": 0,
-              "end_ms (max)": 1,
-              "cost_total (max)": 2,
-              "eff_total (max)": 3,
+              "ts_ms (min)": 0,
+              "ts_ms (max)": 1,
+              "cv (sum)": 2,
+              "effective_tokens (sum)": 3,
               "取り込み比": 4,
               "prompt": 5,
               "prompt_id": 6

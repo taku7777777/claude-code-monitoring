@@ -9,7 +9,9 @@ metrics / logs をローカルに集約し、Grafana で「コスト・時間配
 - **保存**: ダッシュボードで使う値は全て **Loki (ログ) ベース**。Prometheus は SDK 標準
   メトリクスの受け皿として稼働するだけで、ダッシュボードからは参照しない
   （ログベース採用の経緯は [ADR 0001](docs/adr/0001-log-based-event-architecture.md)）
-- **可視化**: Grafana、3 つのダッシュボード（Usage / Context / Cost Optimization）
+- **可視化**: Grafana。考える起点は **Today**（今の使用状況・常時巡回）と **Cost Optimization**
+  （週次の振り返り）の2枚で、そこから Usage / Context / Session List・Detail / Prompt List・明細 へ
+  ドリルダウンする（画面一覧は下表）
 - **独自計測**: Claude Code Hooks で SDK が出さない「待機時間」「permission 待ち時間」
   「変更行数」に加え、コスト最適化のための **task_outcome / intervention_marker** を送信
 
@@ -37,7 +39,7 @@ Claude Code (SDK)
         │                └──────────┬──────────┘
         │                           ▼
         │                    Grafana (:3033)
-        │             Usage / Context / Cost Optimization
+        │        Today / Usage / Context / Cost Optimization / …（ドリル階層）
         │
    独自イベント (hook / CLI 経由で Loki へ):
      ├─ wait_time_observed         応答完了→次プロンプトまでの待機時間
@@ -54,6 +56,8 @@ Claude Code (SDK)
 - 名前・エンドポイント・スキーマの唯一の基準は [`docs/CONTRACT.md`](docs/CONTRACT.md)。
 - 日々/週次/施策サイクルの見方は [`docs/RUNBOOK.md`](docs/RUNBOOK.md)（運用ランブック）。
 - ユースケース別の具体的な判断例（実測値ベース）は [`docs/CASEBOOK.md`](docs/CASEBOOK.md)。
+- **はじめて触る人向け**のハンズオン（サンプルを流して画面がどう動くかを自分で試す）は
+  [`docs/ONBOARDING.md`](docs/ONBOARDING.md)。
 - パネル単位の要件（何を表示し、どんな判断を実現するか）は
   [`docs/3-requirements/`](docs/3-requirements/README.md)（ページ→セクション別ファイル）。
 
@@ -134,16 +138,18 @@ hook（Stop / UserPromptSubmit / Notification / PostToolUse）が含まれてい
 
 | ダッシュボード | uid | 既定期間 | 用途 |
 |---|---|---|---|
+| **Today**（主画面）(`claude-code-today`) | `claude-code-today` | now/d（当日）| **今の使用状況を常時巡回する起点**: 本日コスト・背景比率・キャッシュ有効率・コスト構成・コンテキスト遷移・バーン遷移・workspace別サマリ。日次 $150 / 週 $600 / 月 $2000 のヘッドルーム前提。workspace別サマリの行から各タスクへドリルダウン |
 | **Usage** (`claude-code-usage`) | `claude-code-usage` | now-24h | 利用量の記述（2026-07-14 量に純化）: 総量サマリ（コスト・トークン・行数・セッション数・待機/放置/起動）/ 推移 / 内訳（ws・model・source・トークン種・work_type・tool）/ 行動・時間配分。`$workspace` 変数で全体↔タスク詳細を一本化 |
 | **Context** (`claude-code-context`) | `claude-code-context` | now-3h | 最大コンテキスト量、compaction、cache hit 率、prompt/tool 別詳細、context 汚染検出 |
 | **Cost Optimization** (`claude-code-cost`) | `claude-code-cost` | now-7d | 単位コスト（CPSO・$/1M実効トークン）、バーンレート/予算、施策の before/after 検証、寄与度分解、サブエージェント委任率 |
 | **Prompt明細** (`claude-code-prompt`) | `claude-code-prompt` | now-24h | prompt_id 単位のドリルダウン: 本文・トークン内訳・モデル×ソース・使用ツール・API明細。各 prompt テーブルの行リンクから遷移 |
 | **Workspace / Session（Today絞り込み）** (`claude-code-workspace`) | `claude-code-workspace` | Today同一 | Today と同一コンテンツを `workspace` / `session_id` 変数で絞り込む画面。Today の workspace別サマリ行リンクから着地。ヘッダの「Session List」ボタンで下記へ |
-| **Session List** (`claude-code-session-list`) | `claude-code-session-list` | now-7d | workspace のセッション一覧（コスト/context/リクエスト数でソート・session_id 検索）。行クリックで Session Detail へ |
+| **Session List** (`claude-code-session-list`) | `claude-code-session-list` | now-7d | workspace のセッション一覧（セッション数・合計コストの集計タイル＋ session_id/開始/最終更新/継続/コスト/$1M実効/リクエスト数/最大context の表）。行クリックで Session Detail へ |
 | **Session Detail** (`claude-code-session`) | `claude-code-session` | now-24h | Usage を `workspace`/`session_id` で絞った1セッションの詳細（コスト・トークン・行数・待機/放置・モデル/ソース内訳） |
+| **Prompt List** (`claude-code-prompt-list`) | `claude-code-prompt-list` | now-7d | session/workspace のプロンプト一覧。api_request 集計の**実コスト**（＝セッション総コストと一致）・実効tok・取り込み比・実行時間。本文は user_prompt 由来。行の prompt_id から Prompt明細へ |
 
 全ダッシュボード（Prompt明細を除く）は Loki datasource（`uid: loki`）を使い、`workspace`
-テンプレート変数で絞り込める（複数選択・全選択可）。実際の会話内容の振り返りは
+テンプレート変数で絞り込める（**単一選択**。`All` は allValue `.*` で全 workspace にマッチ）。実際の会話内容の振り返りは
 `scripts/show-session.sh <session_id>` でローカル履歴からサルベージできる。
 タスク用ディレクトリの作成時は `scripts/init-task-workspace.sh <dir> --type <種別>` で
 workspace ラベルを生成する（タスク=workspace 運用。CONTRACT §5.5）。
@@ -231,6 +237,9 @@ Loki から集計し、(a) CPSO、(b) パレート寄与度分解（prompt_id / 
 - 全サービスが **`127.0.0.1` バインド**前提（外部到達を想定していない）
 - telemetry はローカル完結で外部送出しないが、上記の緩い認証設定のまま公開すると
   ダッシュボード・生ログが第三者に露出する
+- **保存データに PII を含む**: `OTEL_LOG_USER_PROMPTS=1` によりユーザープロンプト**全文**と
+  `user_email` / `user_id` / `organization_id` 等の識別子が Loki のローカルボリューム
+  （`loki-data`）に保持される。`loki-data` の共有・バックアップや `:3100` 公開時は取り扱いに注意
 
 ---
 

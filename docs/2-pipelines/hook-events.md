@@ -33,5 +33,8 @@
 ## 品質・限界
 
 - `task_outcome` の自動 `completed` は Stop 到達の弱いプロキシ。手動 success と重複し得る
-  （厳密な成果数は手動ラベル運用に統一。CONTRACT §3.2）。集計は `outcome!~"failure|abandoned"`。
+  （厳密な成果数は手動ラベル運用に統一。CONTRACT §3.2）。集計は**減算方式**＝成功系
+  （`outcome!~"failure|abandoned"`）の件数 − 失敗系（`outcome=~"failure|abandoned"`）の件数。
+  手動 failure/abandoned は追記のみで取り消せないため、並存する自動 completed を減算で相殺する
+  （ダッシュボード CPSO/完遂数パネル・analyzer と同一定義）。
 - 自動起動セッション（cmux 等）の completed 混入に注意（[../3-requirements/cost-optimization/04-verification.md](../3-requirements/cost-optimization/04-verification.md) §3）。

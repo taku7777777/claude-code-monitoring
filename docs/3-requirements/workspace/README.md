@@ -23,7 +23,8 @@ dashboard uid: `claude-code-workspace` / 時間: Today と同一（各パネル 
 
 - **Today の完全なクローン + 2変数**: パネル・レイアウト・timeFrom・色判定は Today と同一。
   差分は (a) 全クエリに `workspace=~"$workspace"` と `| session_id=~"$session_id"` を付与、
-  (b) `workspace`（query・複数選択・includeAll）と `session_id`（textbox・既定 `.*`）の変数追加のみ
+  (b) `workspace`（query・**単一選択（multi:false）**・includeAll（allValue `.*`））と
+  `session_id`（textbox・既定 `.*`）の変数追加のみ
 - **用途を混ぜない**: 「通算の分析」は Cost Opt、「持ち方の診断」は Context の管轄。ここは
   あくまで **Today の当日視点をタスク/セッションに絞るだけ**。パネルの新規追加はしない
   （Today に追加され次第、絞り込み版にも自動で載る運用）

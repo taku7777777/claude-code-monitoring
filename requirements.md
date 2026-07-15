@@ -7,6 +7,19 @@
 - 過去に踏んだ失敗（16件の ADR = Architecture Decision Record）を要約し、**同じ轍を踏まないための情報**を優先的に残す
 - 実装方式（Prometheus / Loki / Grafana / OTEL Collector）は本リポジトリで採用した具体解だが、別の技術スタックで再実装する場合も本質的な要件（第1〜2章）は変わらない
 
+> ⚠️ **正典は `docs/` 側。本ファイルは旧モノリスで、詳細仕様は陳腐化している。**
+> このファイルは `docs/` の3層構造（L1 `docs/1-references/` 観測事実 / L2 `docs/CONTRACT.md`・`docs/2-pipelines/`・`docs/adr/` / L3 `docs/3-requirements/` 表示要件）が抽出される前の一枚岩である。
+> - **通し読みの学習資産として残す**のは §0-2（目的・背景・用語）・§12（過去の教訓）・§15（再構築順序）。
+> - **§3.2-3.4 / §4-11 / §10 / §13-14 / §16 の具体仕様・設定・ダッシュボード・hook 定義は docs/ と二重管理で、実装から遅れている。** これらは参照しないこと。正典は次の通り:
+>   - ダッシュボード表示要件 → [`docs/3-requirements/`](docs/3-requirements/README.md)
+>   - 名前・スキーマ・集計規約 → [`docs/CONTRACT.md`](docs/CONTRACT.md)
+>   - 観測事実（イベント/属性/model/query_source） → [`docs/1-references/`](docs/1-references/README.md)
+>   - パイプライン（集計/派生/hook/pricing/storage） → [`docs/2-pipelines/`](docs/2-pipelines/README.md)
+>   - 設計判断 → [`docs/adr/`](docs/adr/)
+>   - 各設定の実体は `docker-compose.yml` / `otel-collector-config.yml` / `loki-config.yml` / `prometheus.yml` / `grafana/provisioning/`（本文中のコピーではなくファイル本体が正）。
+>
+> 本ファイルと docs/ が食い違う箇所は **docs/ を優先**する。将来的には §0-2・§12・§15 のみを残し、他節は docs/ へのリンクに縮約する（物理縮約は別途）。
+
 ---
 
 ## 0. エグゼクティブサマリー

@@ -15,11 +15,12 @@ Grafana の percentile reducer で算出。[../3-requirements/cost-optimization/
 
 | 記号 | 内容 | 方法 |
 |---|---|---|
-| CPSO | 成果あたりコスト | 期間コスト ÷ 成功系 outcome 数（`outcome!~"failure\|abandoned"`） |
+| [a] CPSO | 成果あたりコスト | 期間コスト ÷ 成果数（成功系 `outcome!~"failure\|abandoned"` − 失敗系 `outcome=~"failure\|abandoned"` の**減算方式**。CONTRACT §3.2） |
 | [b] パレート | prompt_id / work_type 別寄与度分解 | 累積80%までハイライト・今期 vs 前期の増分 |
 | [c] ベースライン | prompt_id ごとの期間合計コストの p50/p90/p95 | 分位点（prompt 単位。per-request とは集計単位が別） |
+| [d] 変化点 | 日次コストの構造変化点 | CUSUM 内蔵、`ruptures` があれば PELT 併用 |
+| [e] RICE 雛形 | 寄与度上位の施策優先度づけ | Reach/Impact/Confidence/Effort テンプレ（手入力想定） |
 | [f] 施策効果検証 | 日次単位コスト(cost/1M実効トークン)の before/after | I-MR 管理図（X̄±2.66·MR̄、before 区間から算出）＋シフト率>10% |
-| 変化点 | 日次コストの構造変化点 | CUSUM 内蔵、`ruptures` があれば PELT 併用 |
 | [g] モデル経済性 | model 別に cost_usd と pricing 再計算の乖離 | 反実仮想・推定誤差の把握 |
 
 ## 実行

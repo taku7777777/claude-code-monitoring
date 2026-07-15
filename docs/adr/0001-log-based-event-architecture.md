@@ -56,7 +56,7 @@ PromQL レベルの工夫（`rate` → `metric - metric offset $__range` → `me
 
 - Prometheus は SDK 標準メトリクス受け皿として残置しているが、ダッシュボードでは未使用。
   ゼロから作るなら Prometheus コンポーネント自体を省略できる（requirements.md 7 章の注記）。
-- ログ量が増えるが、Loki の retention（720h）と structured metadata により実運用では
+- ログ量が増えるが、Loki の retention（2160h＝90日）と structured metadata により実運用では
   ストレージ数 GB 以下に収まる（要件 N-02）。
 - 「累積値をそのまま見たい」用途には向かない。常に期間合算が前提になる。
 

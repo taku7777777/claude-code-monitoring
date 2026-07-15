@@ -29,6 +29,10 @@ Loki の index_label `event_name` は「どのイベントか」を表す。値�
 | `hook_registered` | 起動時に hook が登録された記録 | − | 中 |
 | `hook_execution_start` | SDK が hook の実行を開始した記録（＝本体が hook を呼んだ側。自前 hook が"送る"イベントとは別） | − | 中 |
 | `hook_execution_complete` | 同・hook 実行の完了記録 | − | 中 |
+| `skill_activated` | Skill / スラッシュコマンドが起動した記録 | − | 中 |
+| `at_mention` | `@` によるファイル / エージェント等の参照（メンション）記録 | − | 中 |
+| `api_error` | API 呼び出しがエラー応答を返した記録（`api_refusal` とは別系統） | − | 中 |
+| `api_retries_exhausted` | API リトライ上限に達し再試行を諦めた記録 | − | 中 |
 | `feedback_survey` | フィードバック調査が提示された記録 | − | 低〜中 |
 
 ## 自前 由来（本リポジトリの hook / CLI）

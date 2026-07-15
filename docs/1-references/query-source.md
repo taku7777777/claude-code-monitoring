@@ -21,6 +21,10 @@
 |---|---|---|---|
 | `repl_main_thread` | `repl_main_thread` | 本体の対話。ユーザーがプロンプトを送るたびの主系統。通常は総コストの大半を占める（正常） | 高 |
 | `agent:builtin:general-purpose` | `subagent` | Task 委任で起動した組込み general-purpose サブエージェントの呼び出し。`agent:<種別>` 形式で本体と区別（[06-subagent](../3-requirements/cost-optimization/06-subagent.md) の計測原理） | 高 |
+| `agent:builtin:Explore` | `subagent` | 同・組込み Explore サブエージェント（探索特化の委任） | 高 |
+| `agent:builtin:Plan` | `subagent` | 同・組込み Plan サブエージェント（実装計画の委任） | 高 |
+| `agent:builtin:claude-code-guide` | `subagent` | 同・組込み claude-code-guide サブエージェント（Claude Code 質問応答の委任） | 高 |
+| `sdk` | `main`（推定） | Claude Agent SDK / 非対話(headless)実行から呼ばれた主系統と理解。公式カテゴリの `main` に相当する可能性。一次ソース未確認 | 低（推測） |
 
 ## 背景（裏で自動発生する処理）
 
@@ -28,6 +32,7 @@
 |---|---|---|---|
 | `compact` | `compact` | コンテキスト圧縮（`/compact` 手動 / auto-compaction）の要約 API | 高 |
 | `generate_session_title` | `auxiliary` | セッションのタイトル自動生成。1セッション1回程度、極小コスト | 中〜高 |
+| `rename_generate_name` | `auxiliary` | セッション / 項目名のリネーム自動生成（`generate_session_title` の類縁）。低頻度・極小コスト | 中 |
 | `prompt_suggestion` | `auxiliary` | 入力補完 / サジェスト機能の生成。使用頻度の割に嵩むことがある（削減候補） | 中 |
 | `away_summary` | `auxiliary` | **離席/中断したセッションに戻った際の背景要約**（セッション再開ごと程度）と理解。ただし発火閾値・無効化方法は**公式未記載**。`CLAUDE_CODE_ENABLE_AWAY_SUMMARY` 等のトグルは**一次ソース未確認**で断定不可 | 低（非公式・推測） |
 | `web_search_tool` | `auxiliary` | WebSearch ツールの内部 API 呼び出し | 中 |
@@ -41,9 +46,9 @@
 |---|---|---|
 | `repl_main_thread` | メイン対話スレッド | ✅ そのまま観測 |
 | `compact` | 会話圧縮由来 | ✅ そのまま観測 |
-| `subagent` | サブエージェント発の要求 | `agent:builtin:general-purpose` として細粒度で観測 |
-| `auxiliary` | 背景 / 補助的な内部処理 | `away_summary` / `prompt_suggestion` / `generate_session_title` / `web_*` に分かれて観測 |
-| `main` | 主セッション（メトリクス文脈） | 本環境のログでは未観測 |
+| `subagent` | サブエージェント発の要求 | `agent:builtin:*`（general-purpose / Explore / Plan / claude-code-guide）として細粒度で観測 |
+| `auxiliary` | 背景 / 補助的な内部処理 | `away_summary` / `prompt_suggestion` / `generate_session_title` / `rename_generate_name` / `web_*` に分かれて観測 |
+| `main` | 主セッション（メトリクス文脈） | `sdk` として観測される可能性（推定・未確認） |
 
 ## 活用（読み解きの型）
 

@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .DS_Store
 *.log
+
+# secrets / local-only settings (defense-in-depth; do not rely on global excludes)
+.claude/settings.local.json
+.env
+*.env

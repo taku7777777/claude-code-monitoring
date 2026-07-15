@@ -8,11 +8,13 @@
 
 | model | リクエスト数 | 単価 input/output ($/MTok) | 備考 |
 |---|---|---|---|
-| `claude-fable-5` | 792 | 10 / 50 | 最上位・最多利用。tokenizer=new |
-| `claude-opus-4-8` | 331 | 5 / 25 | tokenizer=new |
-| `claude-haiku-4-5-20251001` | 64 | 1.5 / 7.5 | 日付サフィックス付き（下記） |
-| `claude-sonnet-5` | 4 | 3 / 15 | tokenizer=new |
+| `claude-fable-5` | 1837 | 10 / 50 | 最上位・最多利用。tokenizer=new |
+| `claude-opus-4-8` | 1023 | 5 / 25 | tokenizer=new |
+| `claude-sonnet-5` | 369 | 3 / 15 | tokenizer=new |
+| `claude-haiku-4-5-20251001` | 121 | 1.5 / 7.5 | 日付サフィックス付き（下記） |
 
+> リクエスト数は**30d の移動スナップショット**（2026-07-15 時点）で日々変動する。絶対値でなく
+> 概ねの利用順位（fable ≫ opus > sonnet > haiku）の目安として読む。再取得は本ファイル末尾のコマンド。
 > 単価は pricing.yaml の値（best-effort・2026-07-12 校正）。**表示コストの基準は
 > pricing.yaml × 実トークンの再計算値 cost_recalc**（[api-request-attributes.md](api-request-attributes.md)）。
 

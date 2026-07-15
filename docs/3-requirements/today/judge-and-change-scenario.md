@@ -3,8 +3,8 @@
 このページ（Today）の値を見て**何を判断し、どの操作に繋げるか**の全体像。
 パネル要件（[01](01-headroom.md)〜[06](06-delegation-model.md)）が「値→判断」を定義するのに
 対し、本ファイルは**操作側からの逆引き**（この操作はいつ・何を根拠に実行するか）を
-一覧で持つ。検知対象の全量は異常カタログ（[../draft-today.md](../draft-today.md)
-A1〜A12）、施策としての効果検証は Cost Opt（[効果検証](../cost-optimization/04-verification.md)）の管轄。
+一覧で持つ。検知対象の全量は[異常カタログ](anomaly-catalog.md)（A1〜A12）、施策としての
+効果検証は Cost Opt（[効果検証](../cost-optimization/04-verification.md)）の管轄。
 
 ## シナリオの型
 

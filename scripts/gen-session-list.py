@@ -4,6 +4,11 @@
 Workspace 単位のセッション一覧（コスト/context/リクエスト数でソート・session_id で検索）。
 Context の「セッション一覧」パネル（複雑な transformation 付き）を再利用し、行リンクを
 Session Detail（claude-code-session）へ向ける。Context 改修でこのパネルが変わったら再実行。
+
+⚠️ 注意（ドリフト）: deployed の claude-code-session-list.json は本生成器の出力より進んでおり、
+   手編集で「合計コスト（期間内）」集計タイルと 開始日時/最終更新/継続時間/$1M実効 カラムを
+   追加している。本生成器はそれらを再現しないため、**そのまま再実行すると手追加分が失われる**。
+   再生成する場合は、それらの手編集を本スクリプトへ取り込んでから実行すること。
 """
 import json, copy
 
@@ -72,7 +77,7 @@ dash = {
         "datasource": {"type": "loki", "uid": "loki"}, "definition": "label_values(workspace)",
         "query": {"label": "workspace", "stream": "", "type": 1,
                   "refId": "LokiVariableQueryEditor-VariableQuery"},
-        "refresh": 2, "sort": 1, "multi": True, "includeAll": True,
+        "refresh": 2, "sort": 1, "multi": False, "includeAll": True,
         "allValue": ".*", "current": {}, "options": [], "hide": 0}]},
     "panels": [cnt, tbl],
 }

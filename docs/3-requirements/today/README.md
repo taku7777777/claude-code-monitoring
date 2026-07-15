@@ -44,8 +44,7 @@
 - **色に置く条件**: ①巡回時点で証跡が残って見える値 ②文脈判断なしに読める
   ③比率系は最低分母ガード併設（朝は構造的に偽陽性になるため）。
   条件を満たさない検知は push（alerting・別件）や週次（Cost Opt）へ振り分ける。
-  検知対象の全量と振り分けは [../draft-today.md](../draft-today.md) の
-  異常カタログ（A1〜A12）が正
+  検知対象の全量と振り分けは [異常カタログ](anomaly-catalog.md)（A1〜A12）が正
 - **無操作・固定レンジ**: 変数・フィルタ操作を前提にしない。パネル側で
   now/d / 直近1h / now/w / now/M を固定し、レンジ変更に反応しない
   （例外: ミニテーブルの行クリック遷移は「1クリック目」として許容）
@@ -72,5 +71,5 @@
 [judge-and-change-scenario.md](judge-and-change-scenario.md)。
 
 セクション横断の前提（共通の型・用語解釈・記載規約）は [../README.md](../README.md) /
-[../TEMPLATE.md](../TEMPLATE.md)。ユースケースの全文・異常カタログ・正式化時の
-更新対象は [../draft-today.md](../draft-today.md)（正式化完了までの暫定正本）。
+[../TEMPLATE.md](../TEMPLATE.md)。検知対象の全量（異常カタログ）は
+[anomaly-catalog.md](anomaly-catalog.md) が正。

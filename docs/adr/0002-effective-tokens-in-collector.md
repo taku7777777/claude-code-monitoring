@@ -7,7 +7,7 @@
 
 コスト最適化ダッシュボードには「効率比の共通分母」が要る。input / output / cache_read /
 cache_creation はそれぞれ価格ウェイトが大きく異なる（cache read は通常入力の 0.1x、
-cache write は 1.25x、output は input の約 4 倍）ため、生トークン数を単純合算しても
+cache write は 1.25x、output は input の 5 倍）ため、生トークン数を単純合算しても
 「効率」を測れない。価格ウェイトで正規化した**実効トークン（effective_tokens）**が必要になる。
 
 この派生値をどこで計算するかが問題になる。過去に「stat panel と timeseries で同じはずの値が
@@ -34,8 +34,9 @@ effective_tokens = input_tokens*1.0
 ```
 
 ウェイトの根拠（2026-07 時点、要定期確認）: cache read = 通常入力の 0.1x、
-cache write(5分) = 1.25x、output ≈ input の約 4 倍（Sonnet 系は正確に 5 倍だが実効式では
-output/input 価格比 5.0 を採用。pricing.yaml と一致）。価格改定時はこのウェイトと `pricing/pricing.yaml` を併せて見直す。
+cache write(5分) = 1.25x、output = input の 5 倍（全モデルで output/input 価格比 = 5.0。
+pricing.yaml: opus 25/5・fable 50/10・sonnet 15/3・haiku 7.5/1.5 いずれも比 5.0 で一致）。
+価格改定時はこのウェイトと `pricing/pricing.yaml` を併せて見直す。
 
 ## Consequences
 

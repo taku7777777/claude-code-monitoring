@@ -58,6 +58,9 @@ processors:
           # effective_tokens = 価格ウェイト正規化した実効トークン（効率比の共通分母 / CONTRACT §5）
           # input*1.0 + cache_read*0.1 + cache_creation*1.25 + output*5.0
           # (output ウェイトは pricing.yaml の output/input 価格比 = 5.0 に一致させる / CONTRACT §5)
+          # 注: cache_creation の 1.25 は 5分TTL 基準の据え置き規約値（効率比の正規化用の固定分母）。
+          #     cost_recalc（下の cost 計算）は 1h TTL 前提で cache write を 2.0x とするため、両者は別仮定。
+          #     金額の正確性は cost_recalc が担い、effective_tokens は効率比の共通尺度に徹する（ADR 0002/0006）。
           - set(log.attributes["effective_tokens"], Double(log.attributes["input_tokens"]) + Double(log.attributes["cache_read_tokens"]) * 0.1 + Double(log.attributes["cache_creation_tokens"]) * 1.25 + Double(log.attributes["output_tokens"]) * 5.0) where log.attributes["input_tokens"] != nil and log.attributes["output_tokens"] != nil and log.attributes["cache_read_tokens"] != nil and log.attributes["cache_creation_tokens"] != nil
 
   # cost_recalc = 単価表 (pricing/pricing.yaml SSOT) × 実トークンの再計算コスト (USD)。

@@ -31,6 +31,6 @@ service_name, workspace, work_type, event_name, query_source
 
 ## 保持・容量
 
-- retention 30日（720h）。`compactor.retention_enabled: true` を忘れるとディスクが際限なく膨らむ。
+- retention 90日（2160h）。`compactor.retention_enabled: true` を忘れるとディスクが際限なく膨らむ。
 - Prometheus は SDK 標準メトリクスの受け皿として残置するが**ダッシュボードは未参照**
   （全て Loki ベース。ADR 0001）。

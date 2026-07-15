@@ -10,6 +10,9 @@ services:
     depends_on:
       - prometheus
       - loki
+    # default はサービス側で networks を明示すると暗黙参加が外れるため再宣言が必要
+    # (外すと loki:3100 へのエクスポートが名前解決できず壊れる)
+    networks: [default, mrw-telemetry]
 
   prometheus:
     image: prom/prometheus:v3.11.3
@@ -89,6 +92,14 @@ services:
     depends_on:
       - loki
       - otel-collector
+
+networks:
+  default: {}
+  # stack-up.sh (または muti-repo-workspace の devcontainer-up.sh) が作成する外部ネットワーク。
+  # 檻入りエージェントコンテナが OTLP を collector に届けるための内部専用線
+  # (--internal なのでインターネット経路は無い)。参加するのは otel-collector のみ。
+  mrw-telemetry:
+    external: true
 
 volumes:
   prometheus-data:

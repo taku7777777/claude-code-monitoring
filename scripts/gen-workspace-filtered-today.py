@@ -101,7 +101,7 @@ d["templating"] = {"list": [
         "definition": "label_values(workspace)",
         "query": {"label": "workspace", "stream": "", "type": 1,
                   "refId": "LokiVariableQueryEditor-VariableQuery"},
-        "refresh": 2, "sort": 1, "multi": True, "includeAll": True,
+        "refresh": 2, "sort": 1, "multi": False, "includeAll": True,
         "allValue": ".*", "current": {}, "options": [], "hide": 0,
     },
     {

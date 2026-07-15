@@ -5,10 +5,11 @@
 Today などの絞り込んでいないベース／全体ページにはナビを出さない（画面を占有しないため）。
 
 - ナビあり（4ボタン: Usage / Cost Optimization / Sessions / Prompts）:
-    claude-code-workspace（filtered-Today）/ claude-code-session-list / claude-code-session
+    claude-code-workspace（filtered-Today）/ claude-code-session-list / claude-code-session /
+    claude-code-prompt-list（session/workspace で絞り込むドリルページ）
     `includeVars=True` で現ページの workspace/session を引き継ぐ。
 - ナビなし（links=[]）: claude-code-today / claude-code(Usage) / claude-code-cost /
-    claude-code-context / claude-code-prompt / claude-code-prompt-list
+    claude-code-context / claude-code-prompt
 
 生成器（gen-workspace-filtered-today / gen-session-detail / gen-session-list）も同じ4ボタンを
 埋め込むため再生成しても一致する。ここが**正本**。
@@ -28,7 +29,7 @@ LINKS = [
 ]
 
 # ナビを出すドリルページ（uid）
-NAV_UIDS = {"claude-code-workspace", "claude-code-session-list", "claude-code-session"}
+NAV_UIDS = {"claude-code-workspace", "claude-code-session-list", "claude-code-session", "claude-code-prompt-list"}
 
 BASE = "grafana/provisioning/dashboards"
 changed = []

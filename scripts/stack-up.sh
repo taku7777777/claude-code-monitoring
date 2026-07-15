@@ -12,6 +12,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# muti-repo-workspace のエージェントコンテナが OTLP を届けるための内部専用ネットワーク。
+# compose は external ネットワークが無いと起動に失敗するため、先に冪等に作成しておく。
+docker network create --internal mrw-telemetry 2>/dev/null || true
+
 if docker compose version >/dev/null 2>&1; then
   exec docker compose up -d
 fi
@@ -66,6 +70,9 @@ start "${PROJECT}-otel-collector" \
   -p 127.0.0.1:4317:4317 -p 127.0.0.1:4318:4318 \
   -v "$PWD/otel-collector-config.yml:/etc/otelcol-contrib/config.yaml" \
   otel/opentelemetry-collector-contrib:0.150.1
+
+# docker run は作成時に 1 ネットワークしか接続できないため、mrw-telemetry は後付けで接続する
+docker network connect mrw-telemetry "${PROJECT}-otel-collector" 2>/dev/null || true
 
 start "${PROJECT}-grafana" \
   --network "$NET" \

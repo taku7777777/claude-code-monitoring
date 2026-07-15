@@ -82,6 +82,16 @@ docker compose up -d        # Compose v2 プラグインがある場合
 OTEL Collector / Prometheus / Loki / Grafana が起動する（`restart: unless-stopped`）。
 停止は `docker compose down` または `./scripts/stack-down.sh`（volume は保持される）。
 
+また、collector は外部ネットワーク `mrw-telemetry`（`stack-up.sh` または
+muti-repo-workspace の `devcontainer-up.sh` が `--internal` で作成）にも参加しており、
+muti-repo-workspace のエージェントコンテナが同ネットワーク経由で OTLP を送信できる。
+このネットワークに参加するのは otel-collector のみで、他のサービスは参加しない
+（インターネット経路も無い）。
+
+> **Note**: `docker compose up -d` を直接使う場合は、事前に
+> `docker network create --internal mrw-telemetry` を一度実行しておくこと
+> （external ネットワークが無いと compose が起動に失敗する。`stack-up.sh` 経由なら自動作成される）。
+
 ### 2. Claude Code に telemetry と hook を設定
 
 [`settings/settings.example.json`](settings/settings.example.json) の内容を

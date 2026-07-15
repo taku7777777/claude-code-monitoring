@@ -124,7 +124,7 @@ hook（Stop / UserPromptSubmit / Notification / PostToolUse）が含まれてい
   `.claude/settings.local.json` → `.claude/settings.json` を読み自力で解決する
   （解決順序は CONTRACT §6）。
 
-`scripts/claude-wrapper.zsh`（`~/.zshrc` へ追記して使う zsh ラッパ、requirements.md 5.2）は
+`scripts/claude-wrapper.zsh`（`~/.zshrc` へ追記して使う zsh ラッパ）は
 起動時に env を export する**保険**であり、上記2経路が機能する現行バージョンでは必須ではない。
 置いていないディレクトリからの起動は `(unset)` として計測が継続される。
 
@@ -165,7 +165,7 @@ prompt・work_type・model・query_source 別コスト寄与 / 実効トーク�
 
 「観測 → 診断 → 施策 → 検証」の客観サイクルを回す。詳細な設計判断は
 [ADR 0003](docs/adr/0003-outcome-signal-and-intervention-marker.md) /
-[ADR 0005](docs/adr/0005-objective-verification-methods.md)、および requirements.md 第 16 章を参照。
+[ADR 0005](docs/adr/0005-objective-verification-methods.md)、および [docs/3-requirements/cost-optimization/](docs/3-requirements/cost-optimization/README.md) を参照。
 
 ### 1. 成果ラベルを付ける（CPSO の分母）
 
@@ -253,5 +253,5 @@ Loki から集計し、(a) CPSO、(b) パレート寄与度分解（prompt_id / 
 | [0004](docs/adr/0004-pricing-ssot-and-cost-recompute.md) | `pricing.yaml` を価格 SSOT にコストを自前再計算する |
 | [0005](docs/adr/0005-objective-verification-methods.md) | 単一ユーザー向けに ITSA + 管理図 + CUSUM/PELT の準実験を採る |
 
-再構築の詳細仕様と 16 件の教訓は [`requirements.md`](requirements.md)、名前・スキーマの契約は
-[`docs/CONTRACT.md`](docs/CONTRACT.md) を参照。
+再構築の背景・16件の教訓・実装順序は [`requirements.md`](requirements.md)（§0-2 / §12 / §15。
+詳細仕様は docs/ が正典）、名前・スキーマの契約は [`docs/CONTRACT.md`](docs/CONTRACT.md) を参照。

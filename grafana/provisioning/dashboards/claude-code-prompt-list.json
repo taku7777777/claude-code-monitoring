@@ -398,6 +398,19 @@
           }
         },
         {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "ts_ms (max)",
+              "operator": "-",
+              "right": "ts_ms (min)"
+            },
+            "alias": "実行時間",
+            "replaceFields": false
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
@@ -414,11 +427,12 @@
             "indexByName": {
               "ts_ms (min)": 0,
               "ts_ms (max)": 1,
-              "cv (sum)": 2,
-              "effective_tokens (sum)": 3,
-              "取り込み比": 4,
-              "prompt": 5,
-              "prompt_id": 6
+              "実行時間": 2,
+              "cv (sum)": 3,
+              "effective_tokens (sum)": 4,
+              "取り込み比": 5,
+              "prompt": 6,
+              "prompt_id": 7
             }
           }
         },
@@ -426,7 +440,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "pattern": "^(開始|終了|コスト|実効tok|取り込み比|prompt|prompt_id)$"
+              "pattern": "^(開始|終了|実行時間|コスト|実効tok|取り込み比|prompt|prompt_id)$"
             }
           }
         }
@@ -491,6 +505,26 @@
               {
                 "id": "custom.width",
                 "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "実行時間"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 90
               }
             ]
           },

@@ -35,6 +35,10 @@ Loki の index_label `event_name` は「どのイベントか」を表す。値�
 | `api_retries_exhausted` | API リトライ上限に達し再試行を諦めた記録 | − | 中 |
 | `feedback_survey` | フィードバック調査が提示された記録 | − | 低〜中 |
 
+> **収集時の除外（2026-07-17〜）**: `hook_execution_start` / `hook_execution_complete` /
+> `hook_registered` は消費者がなく全ログの約2/3を占めるため、Collector の filter processor で
+> Loki 送信前に drop している。hook のデバッグが必要な場合は filter を一時的に外す。
+
 ## 自前 由来（本リポジトリの hook / CLI）
 
 正本は [../CONTRACT.md §2/§3](../CONTRACT.md)。SDK が出さない指標を個別イベントで Loki へ送る。

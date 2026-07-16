@@ -1185,7 +1185,7 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "この prompt を構成する api_request の生明細（時系列）。1行 = 1推論（API呼び出し）で、その出力は「文章ブロック（→Claude応答タイムライン）」と「ツール要求（→ツール実行タイムライン）」を0個以上ずつ含む。**1:1対応ではない**: ツール要求ゼロの行はターンを文章で終える呼び出しか背景呼び出し、複数ツールを並列要求する行もある。query_source が正体: repl_main_thread=本体の推論 / compact=自動圧縮 / agent:*=サブエージェント / それ以外=背景機能。再作成率 = cache_creation/(cache_creation+cache_read) — 高い行（橙≥40%/赤≥70%）はキャッシュから読めず作り直した呼び出しで、直前の長い空白（TTL≈1h失効）や大量新規取り込みのサイン。",
+      "description": "この prompt を構成する api_request の生明細（時系列）。1行 = 1推論（API呼び出し）で、その出力は「文章ブロック（→Claude応答タイムライン）」と「ツール要求（→ツール実行タイムライン）」を0個以上ずつ含む。**1:1対応ではない**: ツール要求ゼロの行はターンを文章で終える呼び出しか背景呼び出し、複数ツールを並列要求する行もある。query_source が正体: repl_main_thread=本体の推論 / compact=自動圧縮 / agent:*=サブエージェント / それ以外=背景機能。再作成率 = cache_creation/(cache_creation+cache_read) — 高い行（橙≥40%/赤≥70%）はキャッシュから読めず作り直した呼び出しで、直前の長い空白（TTL≈1h失効）や大量新規取り込みのサイン。応答（文章）列 = その呼び出しが出力した文章ブロック（request_id で結合）。空欄の行はツール要求のみ or 背景呼び出し（ツール実行タイムラインを時刻で照合）。入力の本文は毎回“会話全体”のためテレメトリに存在しない（0-fundamentals/01 §2.1）。",
       "gridPos": {
         "h": 10,
         "w": 24,
@@ -1196,6 +1196,14 @@
         {
           "refId": "A",
           "expr": "{event_name=\"api_request\"} | prompt_id=\"$prompt_id\"",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "{event_name=\"assistant_response\"} | prompt_id=\"$prompt_id\" | label_format resp=`{{ regexReplaceAll \"[\\n\\t\\r ]+\" (regexReplaceAll \"(?s)^(.{120}).*\" .response \"${1} …\") \" \" }}`",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -1212,11 +1220,22 @@
           }
         },
         {
-          "id": "filterFieldsByName",
+          "id": "joinByField",
           "options": {
-            "include": {
-              "pattern": "^(Time|model|query_source|effort|cost_recalc|duration_ms|context_tokens|input_tokens|output_tokens|cache_read_tokens|cache_creation_tokens|effective_tokens)$"
-            }
+            "byField": "request_id",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "Time 1": "Time",
+              "model 1": "model",
+              "query_source 1": "query_source"
+            },
+            "indexByName": {}
           }
         },
         {
@@ -1290,21 +1309,32 @@
             "excludeByName": {
               "_den": true
             },
-            "renameByName": {},
+            "renameByName": {
+              "resp": "応答（文章）"
+            },
             "indexByName": {
               "Time": 0,
               "query_source": 1,
-              "model": 2,
-              "effort": 3,
-              "再作成率": 4,
-              "cache_read_tokens": 5,
-              "cache_creation_tokens": 6,
-              "input_tokens": 7,
-              "output_tokens": 8,
-              "context_tokens": 9,
-              "cost_recalc": 10,
-              "duration_ms": 11,
-              "effective_tokens": 12
+              "resp": 2,
+              "model": 3,
+              "effort": 4,
+              "再作成率": 5,
+              "cache_read_tokens": 6,
+              "cache_creation_tokens": 7,
+              "input_tokens": 8,
+              "output_tokens": 9,
+              "context_tokens": 10,
+              "cost_recalc": 11,
+              "duration_ms": 12,
+              "effective_tokens": 13
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(Time|model|query_source|effort|cost_recalc|duration_ms|context_tokens|input_tokens|output_tokens|cache_read_tokens|cache_creation_tokens|effective_tokens|再作成率|応答（文章）)$"
             }
           }
         }
@@ -1419,6 +1449,25 @@
               {
                 "id": "decimals",
                 "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "応答（文章）"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto",
+                  "wrapText": true
+                }
               }
             ]
           }

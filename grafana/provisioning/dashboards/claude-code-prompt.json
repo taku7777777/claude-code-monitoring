@@ -35,7 +35,7 @@
         "hide": false,
         "iconColor": "rgba(200, 200, 200, 0.6)",
         "name": "セッション内プロンプト",
-        "expr": "{event_name=\"user_prompt\"} | session_id=~\"$session_id\" | label_format p=`{{ regexReplaceAll \"(?s)^(.{200}).*\" .prompt \"${1} …\" }}`",
+        "expr": "{event_name=\"user_prompt\"} | session_id=~\"$session_id\" | label_format p=`{{ regexReplaceAll \"\\n\" (regexReplaceAll \"(?s)^(.{200}).*\" .prompt \"${1} …\") \"<br>\" }}`",
         "textFormat": "{{p}}",
         "titleFormat": "",
         "tagKeys": "__none__"
@@ -444,7 +444,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{event_name=\"user_prompt\"} | prompt_id=\"$prompt_id\" | label_format body=`{{ printf \"\\n%s\\n\u00a0\" .prompt }}`",
+          "expr": "{event_name=\"user_prompt\"} | prompt_id=\"$prompt_id\" | label_format body=`{{ printf \"\\n%s\\n \" .prompt }}`",
           "datasource": {
             "type": "loki",
             "uid": "loki"

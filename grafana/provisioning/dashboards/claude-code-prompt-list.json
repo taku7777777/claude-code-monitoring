@@ -383,6 +383,12 @@
                 "aggregations": [
                   "lastNotNull"
                 ]
+              },
+              "session_id": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "lastNotNull"
+                ]
               }
             }
           }
@@ -447,20 +453,49 @@
           }
         },
         {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "ts_ms (min)",
+              "operator": "-",
+              "right": "5400000"
+            },
+            "alias": "_lfrom",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "ts_ms (max)",
+              "operator": "+",
+              "right": "1800000"
+            },
+            "alias": "_lto",
+            "replaceFields": false
+          }
+        },
+        {
           "id": "organize",
           "options": {
             "excludeByName": {
               "cache_creation_tokens (sum)": true,
               "cache_read_tokens (sum)": true,
               "output_tokens (sum)": true,
-              "_ccr": true
+              "_ccr": true,
+              "session_id (lastNotNull) 2": true
             },
             "renameByName": {
               "ts_ms (min)": "開始",
               "ts_ms (max)": "終了",
               "cv (sum)": "コスト",
               "effective_tokens (sum)": "実効tok",
-              "prompt (lastNotNull)": "prompt"
+              "prompt (lastNotNull)": "prompt",
+              "session_id (lastNotNull) 1": "session_id",
+              "session_id (lastNotNull)": "session_id"
             },
             "indexByName": {
               "ts_ms (min)": 0,
@@ -471,7 +506,10 @@
               "取り込み比": 5,
               "再作成率": 6,
               "prompt": 7,
-              "prompt_id": 8
+              "prompt_id": 8,
+              "session_id": 9,
+              "_lfrom": 10,
+              "_lto": 11
             }
           }
         },
@@ -479,7 +517,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "pattern": "^(開始|終了|実行時間|コスト|実効tok|取り込み比|再作成率|prompt|prompt_id)$"
+              "pattern": "^(開始|終了|実行時間|コスト|実効tok|取り込み比|再作成率|prompt|prompt_id|session_id|_lfrom|_lto)$"
             }
           }
         }
@@ -714,9 +752,61 @@
                 "value": [
                   {
                     "title": "この prompt の明細を表示",
-                    "url": "/d/claude-code-prompt/claude-code-prompt?var-prompt_id=${__data.fields.prompt_id}&${__url_time_range}"
+                    "url": "/d/claude-code-prompt/claude-code-prompt?var-prompt_id=${__data.fields.prompt_id}&var-session_id=${__data.fields.session_id}&from=${__data.fields._lfrom}&to=${__data.fields._lto}"
                   }
                 ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "session_id"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_lfrom"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "_lto"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.hidden",
+                "value": true
               }
             ]
           }

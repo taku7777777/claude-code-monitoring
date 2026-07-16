@@ -572,7 +572,7 @@
       "id": 12,
       "type": "timeseries",
       "title": "累計コスト",
-      "description": "本日 07:00 からの累積コスト（5分ビン累積・step 5m 固定）と過去同曜日3週の同時刻平均、$150 赤破線。開始を 07:00 に固定して早朝の空白帯を刈っている — 07:00 以前に実績がある日はその分が累積に含まれず本日コスト stat と乖離する（稀・許容）。終端は現在時刻（Grafana はパネル単位の終端固定・データ駆動レンジをサポートしないため、17:00 固定は他パネルの相対窓と両立しない）。日末着地はこのカーブの目視外挿で判断する。",
+      "description": "本日 07:00 からの累積コスト（5分ビン累積・step 5m 固定）と過去同曜日3週の同時刻平均、$150 赤破線。3週平均はデータの無い週を $0 として常に /3 で割る（運用開始から3週間は過小に出る）。開始を 07:00 に固定して早朝の空白帯を刈っている — 07:00 以前に実績がある日はその分が累積に含まれず本日コスト stat と乖離する（稀・許容）。終端は現在時刻（Grafana はパネル単位の終端固定・データ駆動レンジをサポートしないため、17:00 固定は他パネルの相対窓と両立しない）。日末着地はこのカーブの目視外挿で判断する。",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -601,7 +601,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "(sum(sum_over_time({event_name=\"api_request\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [5m] offset 7d)) + sum(sum_over_time({event_name=\"api_request\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [5m] offset 14d)) + sum(sum_over_time({event_name=\"api_request\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [5m] offset 21d))) / 3",
+          "expr": "((sum(sum_over_time({event_name=\"api_request\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [5m] offset 7d)) or vector(0)) + (sum(sum_over_time({event_name=\"api_request\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [5m] offset 14d)) or vector(0)) + (sum(sum_over_time({event_name=\"api_request\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [5m] offset 21d)) or vector(0))) / 3",
           "legendFormat": "raw_avg",
           "queryType": "range",
           "step": "5m"

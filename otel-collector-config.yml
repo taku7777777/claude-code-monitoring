@@ -26,6 +26,16 @@ processors:
   batch:
     timeout: 5s
 
+  # 消費者ゼロで全ログの約2/3を占める hook 実行イベントを保存前に除外する。
+  # デバッグ時はこの filter を一時的に外す（2026-07-17 実測、docs/reviews 参照）。
+  filter/drop_unused_hook_events:
+    error_mode: ignore
+    logs:
+      log_record:
+        - 'attributes["event.name"] == "hook_execution_start"'
+        - 'attributes["event.name"] == "hook_execution_complete"'
+        - 'attributes["event.name"] == "hook_registered"'
+
   # workspace / work_type の resource attribute を data point attribute に昇格させる。
   # 意図した属性だけを選択的に昇格させ、カーディナリティ爆発を避ける。
   # session_id は metrics pipeline 側でのみ delete（logs には残す）。
@@ -98,5 +108,5 @@ service:
       exporters: [prometheus, debug]
     logs:
       receivers: [otlp]
-      processors: [transform/promote_workspace_logs, transform/cost_recalc, batch]
+      processors: [filter/drop_unused_hook_events, transform/promote_workspace_logs, transform/cost_recalc, batch]
       exporters: [otlp_http/loki, debug]

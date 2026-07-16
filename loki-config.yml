@@ -51,6 +51,10 @@ limits_config:
   max_query_series: 5000
   max_entries_limit_per_query: 5000
   allow_structured_metadata: true
+  # データは極小（9MB）だが、1h 分割×4並列×キャッシュ無効で 7d クエリが
+  # 1本1秒超だったため、24h 単位へ粗くする（2026-07-17 実測、docs/reviews 参照）。
+  split_queries_by_interval: 24h
+  split_instant_metric_queries_by_interval: 24h
   # OTLP attribute → Loki ラベル/structured metadata のマッピング制御。
   # Loki 3.x では Collector 側の loki.resource.labels ヒントは効かず、
   # ここで明示的に index_label に昇格させる必要がある。
@@ -77,6 +81,33 @@ limits_config:
           - query_source
           - workspace
           - work_type
+
+# 上記実測に基づき、ローカル単機のクエリ並列度を引き上げる。
+querier:
+  max_concurrent: 16
+
+# 分割クエリと instant metric の再計算を避ける（2026-07-17 実測、docs/reviews 参照）。
+query_range:
+  cache_results: true
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+  cache_instant_metric_results: true
+  instant_metric_query_split_align: true
+  instant_metric_results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+# 30秒〜1分間隔の再読込で同じチャンクを読み直さないためのローカルキャッシュ。
+chunk_store_config:
+  chunk_cache_config:
+    embedded_cache:
+      enabled: true
+      max_size_mb: 256
 
 # retention_enabled を忘れると retention_period が空振りしてディスクが膨らむ
 compactor:

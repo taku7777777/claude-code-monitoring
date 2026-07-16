@@ -64,6 +64,15 @@
 - `context_tokens` (Collector 派生) = `cache_read_tokens + cache_creation_tokens`
 - `effective_tokens` (Collector 派生・**新規**) = §5 参照
 
+> ⚠️ **計上コスト ≤ 実請求（構造的盲点 / 2026-07-16 確認）**: `api_request` は API 呼び出しが
+> **完了した時のみ**発火する。送信後の中断（Esc）はストリームをクライアント側で打ち切るため
+> イベントが発火しないが、**サーバー側では入力処理と中断までの出力生成が課金済み**。
+> エラー終了も同様（`api_error` / `api_retries_exhausted` はトークン・コスト属性を持たない）。
+> したがって cost_recalc / cost_usd の合計は**実請求の下限**であり、この欠落は
+> 「SDK推定との乖離」stat では検知できない（両者とも同じ api_request 由来のため）。
+> 規模の proxy は Cost Optimization「計測ヘルス: 未計上コスト」セクション
+> （中断疑い件数 × 平均リクエスト単価）、真値は月次の請求突合（RUNBOOK §5）のみ。
+
 ### 3.2 `task_outcome`（新規）
 - `event.name` = `task_outcome`
 - `outcome` (string): `completed` | `success` | `failure` | `abandoned`

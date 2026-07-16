@@ -14,7 +14,7 @@
     "to": "now"
   },
   "timezone": "browser",
-  "refresh": "30s",
+  "refresh": "1m",
   "links": [],
   "annotations": {
     "list": [

@@ -2998,6 +2998,560 @@
         ]
       },
       "id": 34
+    },
+    {
+      "id": 42,
+      "type": "row",
+      "title": "計測ヘルス: 未計上コスト（中断・エラー — 計上コスト ≤ 実請求）",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 102,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 43,
+      "type": "stat",
+      "title": "確定コスト（期間）",
+      "description": "api_request として記録されたコストの合計（cost_recalc 優先）。中断・エラーで完了しなかった呼び出しはここに含まれない。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 103,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": false
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B0B7C3"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 44,
+      "type": "stat",
+      "title": "中断疑い件数（期間）",
+      "description": "非slashの user_prompt のうち、本体 api_request（repl_main_thread）が1件も記録されなかった prompt の数 = max(0, 送信数 − 記録あり数)。中断のほか、作業中の追い送り（コストは元promptに計上）も混ざるため上限側の見積もり。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 103,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (prompt_id) (count_over_time({event_name=\"user_prompt\", workspace=~\"$workspace\"} | prompt!~`(?s)/[a-zA-Z][a-zA-Z0-9_-]*(\\s.*)?` [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "M",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (prompt_id) (count_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=\"repl_main_thread\"} [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "($N - $M + abs($N - $M)) / 2",
+          "hide": false
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B0B7C3"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 45,
+      "type": "stat",
+      "title": "未計上の推定コスト（期間）",
+      "description": "中断疑い件数 × 期間内の平均リクエスト単価（確定コスト÷リクエスト数）。サーバー側では入力処理と中断までの出力生成が課金されるが api_request が発火せず計上できないため、その規模を推定する。真値は月次の請求突合（RUNBOOK §5）でのみ確認できる。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 103,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} [$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (prompt_id) (count_over_time({event_name=\"user_prompt\", workspace=~\"$workspace\"} | prompt!~`(?s)/[a-zA-Z][a-zA-Z0-9_-]*(\\s.*)?` [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "M",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (prompt_id) (count_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=\"repl_main_thread\"} [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "($N - $M + abs($N - $M)) / 2",
+          "hide": true
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$S * ($A / $R)",
+          "hide": false
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 46,
+      "type": "stat",
+      "title": "合計（確定＋推定）",
+      "description": "実請求に近い見積もり = 確定コスト + 未計上の推定コスト。SDK乖離statは api_request 由来同士の比較のため、この欠落を検知できない（構造的盲点）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 103,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(sum_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} [$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (prompt_id) (count_over_time({event_name=\"user_prompt\", workspace=~\"$workspace\"} | prompt!~`(?s)/[a-zA-Z][a-zA-Z0-9_-]*(\\s.*)?` [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "M",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (prompt_id) (count_over_time({event_name=\"api_request\", workspace=~\"$workspace\", query_source=\"repl_main_thread\"} [$__range]))) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "hide": true
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "($N - $M + abs($N - $M)) / 2",
+          "hide": true
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$S * ($A / $R)",
+          "hide": true
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$A + $E",
+          "hide": false
+        }
+      ],
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B0B7C3"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 47,
+      "type": "table",
+      "title": "未計上の疑い一覧（api_request が記録されなかった送信）",
+      "description": "非slashの user_prompt で、対応する api_request が期間内に1件も無いもの。典型は送信後の中断（Esc）— サーバー側の入力処理・部分出力は課金されるが計上されない。作業中の追い送り（応答が元promptに計上）や直近の進行中プロンプトも混ざる点に注意（疑い＝上限側）。",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 108,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "maxLines": 2000,
+          "expr": "{event_name=\"user_prompt\", workspace=~\"$workspace\"} | prompt!~`(?s)/[a-zA-Z][a-zA-Z0-9_-]*(\\s.*)?` | label_format ts_ms=\"{{ divf .observed_timestamp 1000000 }}\""
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "expr": "sum by (prompt_id) (count_over_time({event_name=\"api_request\", workspace=~\"$workspace\"} [$__range]))"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "labels",
+            "format": "json",
+            "replace": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "ts_ms",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "prompt_id",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Value #B",
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "ts_ms": "時刻",
+              "workspace 1": "workspace"
+            },
+            "indexByName": {
+              "ts_ms": 0,
+              "workspace": 1,
+              "prompt": 2,
+              "prompt_id": 3
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(時刻|workspace|prompt|prompt_id)$"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "時刻",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "時刻"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "workspace"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "prompt_id"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "links": []

@@ -114,7 +114,7 @@ hook（Stop / UserPromptSubmit / Notification / PostToolUse）が含まれてい
 計測対象の各プロジェクトルートの `.claude/settings.json` に判定値を仕込む:
 
 ```jsonc
-{ "env": { "OTEL_RESOURCE_ATTRIBUTES": "workspace=HHW-1234,work_type=main-dev" } }
+{ "env": { "OTEL_RESOURCE_ATTRIBUTES": "workspace=PROJ-1234,work_type=main-dev" } }
 ```
 
 **これだけで workspace 帰属は機能する**（2026-07-11 実測）:

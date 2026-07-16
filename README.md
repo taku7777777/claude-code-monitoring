@@ -54,6 +54,8 @@ Claude Code (SDK)
   ダッシュボードは単一フィールドを参照するだけにしてパネル間の整合を構造的に保証する
   （[ADR 0002](docs/adr/0002-effective-tokens-in-collector.md)）。
 - 名前・エンドポイント・スキーマの唯一の基準は [`docs/CONTRACT.md`](docs/CONTRACT.md)。
+- **なぜそのコストになるのか**（LLM 課金の仕組み・最適化レバー・監視とアクションの対応）は
+  [`docs/0-fundamentals/`](docs/0-fundamentals/README.md)（本リポジトリの意義と使い方の出発点）。
 - 日々/週次/施策サイクルの見方は [`docs/RUNBOOK.md`](docs/RUNBOOK.md)（運用ランブック）。
 - ユースケース別の具体的な判断例（実測値ベース）は [`docs/CASEBOOK.md`](docs/CASEBOOK.md)。
 - **はじめて触る人向け**のハンズオン（サンプルを流して画面がどう動くかを自分で試す）は

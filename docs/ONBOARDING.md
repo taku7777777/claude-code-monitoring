@@ -3,6 +3,7 @@
 このリポジトリのダッシュボードを **「自分で操作して、その結果が画面にどう出るか」を試しながら** 覚えるためのハンズオン。
 「どんなプロンプトや処理が、ダッシュ上でどう表現されるか」を体感して、値を読む勘を作るのが目的。
 
+- **なぜそのコストになるのか（課金の仕組みとレバー）** → [0-fundamentals/](0-fundamentals/README.md)
 - **なぜ見るのか（ユースケース）** → [USECASE.md](USECASE.md)
 - **実測値でどう診断するか（熟練者の型）** → [CASEBOOK.md](CASEBOOK.md)
 - **各値の厳密な定義** → [CONTRACT.md](CONTRACT.md) / [docs/3-requirements/](3-requirements/)

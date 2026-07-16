@@ -35,9 +35,10 @@
         "hide": false,
         "iconColor": "rgba(200, 200, 200, 0.6)",
         "name": "セッション内プロンプト",
-        "expr": "{event_name=\"user_prompt\"} | session_id=~\"$session_id\" | label_format p=\"{{ substr 0 160 .prompt }}\"",
+        "expr": "{event_name=\"user_prompt\"} | session_id=~\"$session_id\" | label_format p=`{{ regexReplaceAll \"(?s)^(.{200}).*\" .prompt \"${1} …\" }}`",
         "textFormat": "{{p}}",
-        "titleFormat": "prompt"
+        "titleFormat": "",
+        "tagKeys": "__none__"
       }
     ]
   },

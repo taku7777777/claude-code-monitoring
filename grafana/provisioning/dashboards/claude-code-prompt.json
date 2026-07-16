@@ -1010,7 +1010,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{event_name=\"tool_result\"} | prompt_id=\"$prompt_id\"",
+          "expr": "{event_name=\"tool_result\"} | prompt_id=\"$prompt_id\" | label_format tin=`{{ regexReplaceAll \"(?s)^(.{160}).*\" .tool_input \"${1} …\" }}`",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -1043,14 +1043,14 @@
             "excludeByName": {},
             "renameByName": {
               "tool_name": "ツール",
-              "tool_parameters": "入力",
+              "tin": "入力",
               "duration_ms": "所要",
               "success": "成功"
             },
             "indexByName": {
               "Time": 0,
               "tool_name": 1,
-              "tool_parameters": 2,
+              "tin": 2,
               "duration_ms": 3,
               "success": 4
             }

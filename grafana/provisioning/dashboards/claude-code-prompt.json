@@ -12,6 +12,35 @@
     "from": "now-24h",
     "to": "now"
   },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "rgba(200, 200, 200, 0.6)",
+        "name": "セッション内プロンプト",
+        "expr": "{event_name=\"user_prompt\"} | session_id=~\"$session_id\" | label_format p=\"{{ substr 0 160 .prompt }}\"",
+        "textFormat": "{{p}}",
+        "titleFormat": "prompt"
+      }
+    ]
+  },
   "templating": {
     "list": [
       {
@@ -24,183 +53,23 @@
           "value": ""
         },
         "hide": 0,
-        "description": "コストドライバ/prompt別テーブルの行リンク、または prompt_id を貼り付け"
+        "description": "プロンプト一覧の行リンク、または prompt_id を貼り付け"
+      },
+      {
+        "name": "session_id",
+        "label": "session_id",
+        "type": "textbox",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "hide": 0,
+        "description": "「セッション内の位置」グラフとプロンプト縦線の絞り込み。プロンプト一覧の行リンクから自動で渡る（.* = 全セッション）"
       }
     ]
   },
   "panels": [
-    {
-      "type": "row",
-      "id": 13,
-      "title": "入口",
-      "collapsed": false,
-      "panels": [],
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      }
-    },
-    {
-      "type": "table",
-      "id": 12,
-      "title": "直近のプロンプト一覧（入口）",
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "description": "prompt_id 未指定でもこのページを使えるようにする入口。表示期間内の user_prompt を新しい順に一覧し、prompt_id リンクで明細（このページの変数に反映）へ遷移する。通常の入口は Cost Opt / Context の prompt テーブル行リンク。 コスト列はプロンプト単位の合計（列ヘッダクリックで高額順に並べ替え）。",
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 1
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "{event_name=\"user_prompt\"}",
-          "maxLines": 50,
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          }
-        },
-        {
-          "refId": "B",
-          "expr": "sum by (prompt_id) (sum_over_time({event_name=\"api_request\"} | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))",
-          "instant": true,
-          "range": false,
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          }
-        }
-      ],
-      "transformations": [
-        {
-          "id": "extractFields",
-          "options": {
-            "source": "labels",
-            "format": "json",
-            "replace": false
-          }
-        },
-        {
-          "id": "filterFieldsByName",
-          "options": {
-            "include": {
-              "pattern": "^(Time|prompt_id|prompt|Value #B)$"
-            }
-          }
-        },
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "prompt_id",
-            "mode": "outer"
-          }
-        },
-        {
-          "id": "filterByValue",
-          "options": {
-            "filters": [
-              {
-                "fieldName": "prompt",
-                "config": {
-                  "id": "isNotNull",
-                  "options": {}
-                }
-              }
-            ],
-            "match": "all",
-            "type": "include"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time 2": true
-            },
-            "renameByName": {
-              "Time 1": "Time",
-              "Value #B": "コスト(USD)"
-            },
-            "indexByName": {
-              "Time": 0,
-              "prompt_id": 1,
-              "コスト(USD)": 2,
-              "prompt": 3
-            }
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "cellOptions": {
-              "type": "auto",
-              "wrapText": true
-            },
-            "filterable": false
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "prompt_id"
-            },
-            "properties": [
-              {
-                "id": "custom.width",
-                "value": 320
-              },
-              {
-                "id": "links",
-                "value": [
-                  {
-                    "title": "この prompt の明細を表示",
-                    "url": "/d/claude-code-prompt/claude-code-prompt?var-prompt_id=${__data.fields.prompt_id}&${__url_time_range}"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "コスト(USD)"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "currencyUSD"
-              },
-              {
-                "id": "decimals",
-                "value": 3
-              },
-              {
-                "id": "custom.width",
-                "value": 110
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "cellHeight": "sm",
-        "sortBy": [
-          {
-            "displayName": "Time",
-            "desc": true
-          }
-        ]
-      }
-    },
     {
       "type": "row",
       "id": 14,
@@ -211,7 +80,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 9
+        "y": 0
       }
     },
     {
@@ -226,7 +95,7 @@
         "h": 4,
         "w": 4,
         "x": 0,
-        "y": 10
+        "y": 1
       },
       "targets": [
         {
@@ -281,7 +150,7 @@
         "h": 4,
         "w": 4,
         "x": 4,
-        "y": 10
+        "y": 1
       },
       "targets": [
         {
@@ -336,7 +205,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 10
+        "y": 1
       },
       "targets": [
         {
@@ -391,12 +260,12 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 10
+        "y": 1
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(sum_over_time({event_name=\"api_request\", query_source=~\"agent:.*\"} | prompt_id=\"$prompt_id\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range]))",
+          "expr": "sum(sum_over_time({event_name=\"api_request\", query_source=~\"agent:.*\"} | prompt_id=\"$prompt_id\" | label_format cost_v=\"{{ if .cost_recalc }}{{ .cost_recalc }}{{ else }}{{ .cost_usd }}{{ end }}\" | unwrap cost_v [$__range])) or vector(0)",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -446,12 +315,12 @@
         "h": 4,
         "w": 4,
         "x": 16,
-        "y": 10
+        "y": 1
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(count_over_time({event_name=\"tool_decision\"} | prompt_id=\"$prompt_id\" | tool_name=\"Agent\" [$__range]))",
+          "expr": "sum(count_over_time({event_name=\"tool_decision\"} | prompt_id=\"$prompt_id\" | tool_name=\"Agent\" [$__range])) or vector(0)",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -501,7 +370,7 @@
         "h": 4,
         "w": 4,
         "x": 20,
-        "y": 10
+        "y": 1
       },
       "targets": [
         {
@@ -547,14 +416,14 @@
     {
       "type": "row",
       "id": 15,
-      "title": "内訳（本文・トークン・経路・ツール）",
+      "title": "本文とセッション内の位置",
       "collapsed": false,
       "panels": [],
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 5
       }
     },
     {
@@ -564,12 +433,12 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "OTEL_LOG_USER_PROMPTS=1 で収集した user_prompt 本文。振り返り時に「何を・どんな前提で頼んだか」をここで思い出す。",
+      "description": "OTEL_LOG_USER_PROMPTS=1 で収集した user_prompt 本文（全文・折返し表示）。振り返り時に「何を・どんな前提で頼んだか」をここで思い出す。",
       "gridPos": {
-        "h": 7,
-        "w": 24,
+        "h": 18,
+        "w": 8,
         "x": 0,
-        "y": 15
+        "y": 6
       },
       "targets": [
         {
@@ -594,7 +463,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "pattern": "^(Time|prompt)$"
+              "pattern": "^(prompt)$"
             }
           }
         }
@@ -609,31 +478,128 @@
             "filterable": false
           }
         },
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "lg",
+        "footer": {
+          "show": false
+        },
+        "showHeader": false
+      },
+      "id": 7
+    },
+    {
+      "type": "timeseries",
+      "title": "セッション内の位置（context遷移と前後のプロンプト）",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "このセッションの context_tokens 遷移の中で、この依頼（赤点）がどの位置だったか。縦線 = セッション内の各プロンプト送信（ホバーで本文冒頭）。読み方: 直前の縦線・点との時間の空きが大きい × 直後に線が急伸（cache_creation で作り直し）= 放置によるキャッシュ失効の再構築。プロンプト一覧の行リンク経由で session_id が自動で渡る（.* のままだと全セッションが重なる）。",
+      "gridPos": {
+        "h": 10,
+        "w": 16,
+        "x": 8,
+        "y": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (sid) (max_over_time({event_name=\"api_request\"} | session_id=~\"$session_id\" | label_format sid=\"{{ substr 0 8 .session_id }}\" | unwrap context_tokens [$__interval]))",
+          "legendFormat": "context {{sid}}",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "queryType": "range"
+        },
+        {
+          "refId": "B",
+          "expr": "max by (mark) (max_over_time({event_name=\"api_request\"} | prompt_id=\"$prompt_id\" | label_format mark=\"この依頼\" | unwrap context_tokens [$__interval]))",
+          "legendFormat": "この依頼",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "always",
+            "pointSize": 4,
+            "spanNulls": 900000,
+            "fillOpacity": 0,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 150000
+              },
+              {
+                "color": "red",
+                "value": 200000
+              }
+            ]
+          }
+        },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "prompt"
+              "options": "この依頼"
             },
             "properties": [
               {
-                "id": "custom.width",
-                "value": null
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 10
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 0
               }
             ]
           }
         ]
       },
       "options": {
-        "cellHeight": "lg",
-        "sortBy": [
-          {
-            "displayName": "Time",
-            "desc": false
-          }
-        ]
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
-      "id": 7
+      "id": 17
     },
     {
       "type": "piechart",
@@ -642,12 +608,12 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "この prompt のトークン構成。cache_read 支配なら文脈引きずり型、cache_creation 大なら新規取り込み型。",
+      "description": "この prompt のトークン構成。cache_read 支配なら文脈引きずり型、cache_creation 大なら新規取り込み型（またはキャッシュ失効の再構築）。",
       "gridPos": {
         "h": 8,
-        "w": 6,
+        "w": 8,
         "x": 0,
-        "y": 22
+        "y": 24
       },
       "targets": [
         {
@@ -780,12 +746,12 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "この prompt のコストが「どのモデル・どの経路（本体/サブエージェント等）」で発生したか。",
+      "description": "この prompt のコストが「どのモデル・どの経路」で発生したか。repl_main_thread=本体 / compact=自動圧縮 / agent:*=委任 / それ以外=背景機能。",
       "gridPos": {
         "h": 8,
         "w": 9,
-        "x": 6,
-        "y": 22
+        "x": 8,
+        "y": 24
       },
       "targets": [
         {
@@ -847,9 +813,9 @@
       "description": "この prompt 中の tool_decision を tool_name 別に計数。探索過多 (Read/Grep 連打) や委任 (Agent) の有無が分かる。",
       "gridPos": {
         "h": 8,
-        "w": 9,
-        "x": 15,
-        "y": 22
+        "w": 7,
+        "x": 17,
+        "y": 24
       },
       "targets": [
         {
@@ -904,6 +870,302 @@
     {
       "type": "row",
       "id": 16,
+      "title": "実行タイムライン（何をしたか）",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      }
+    },
+    {
+      "type": "table",
+      "title": "Claude応答タイムライン",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "この prompt 中の assistant_response 本文（API 呼び出しの成果物）を時系列で表示。API呼び出し明細の各行が「何を言った/考えた区切りか」をここで照合する。",
+      "gridPos": {
+        "h": 11,
+        "w": 14,
+        "x": 0,
+        "y": 33
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{event_name=\"assistant_response\"} | prompt_id=\"$prompt_id\"",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "labels",
+            "format": "json",
+            "replace": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "response": "Claude応答"
+            },
+            "indexByName": {
+              "Time": 0,
+              "response": 1
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(Time|Claude応答)$"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": false
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            },
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:MM/DD HH:mm:ss"
+              },
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          }
+        ]
+      },
+      "id": 18
+    },
+    {
+      "type": "table",
+      "title": "ツール実行タイムライン",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "この prompt 中の tool_result（実行したツール・入力・所要・成否）を時系列で表示。",
+      "gridPos": {
+        "h": 11,
+        "w": 10,
+        "x": 14,
+        "y": 33
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{event_name=\"tool_result\"} | prompt_id=\"$prompt_id\"",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "labels",
+            "format": "json",
+            "replace": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "duration_ms",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "tool_name": "ツール",
+              "tool_parameters": "入力",
+              "duration_ms": "所要",
+              "success": "成功"
+            },
+            "indexByName": {
+              "Time": 0,
+              "tool_name": 1,
+              "tool_parameters": 2,
+              "duration_ms": 3,
+              "success": 4
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "pattern": "^(Time|ツール|入力|所要|成功)$"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": false
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto",
+              "wrapText": true
+            },
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:MM/DD HH:mm:ss"
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ツール"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "所要"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "成功"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              }
+            ]
+          }
+        ]
+      },
+      "id": 20
+    },
+    {
+      "type": "row",
+      "id": 19,
       "title": "明細（生リクエスト）",
       "collapsed": false,
       "panels": [],
@@ -911,7 +1173,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 44
       }
     },
     {
@@ -921,12 +1183,12 @@
         "type": "loki",
         "uid": "loki"
       },
-      "description": "この prompt を構成する api_request の生明細（時系列）。コストの発生順序・context の伸び方を1行ずつ追える。",
+      "description": "この prompt を構成する api_request の生明細（時系列）。1行 = 1 API呼び出し。query_source が正体: repl_main_thread=本体の推論 / compact=自動圧縮 / agent:*=サブエージェント / それ以外=背景機能。再作成率 = cache_creation/(cache_creation+cache_read) — 高い行（橙≥40%/赤≥70%）はキャッシュから読めず作り直した呼び出しで、直前の長い空白（TTL≈1h失効）や大量新規取り込みのサイン。具体的に何をしていたかは上の実行タイムラインと時刻で照合する。",
       "gridPos": {
-        "h": 9,
+        "h": 10,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 45
       },
       "targets": [
         {
@@ -951,7 +1213,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "pattern": "^(Time|model|query_source|cost_recalc|cost_usd|duration_ms|context_tokens|input_tokens|output_tokens|cache_read_tokens|cache_creation_tokens|effective_tokens)$"
+              "pattern": "^(Time|model|query_source|effort|cost_recalc|duration_ms|context_tokens|input_tokens|output_tokens|cache_read_tokens|cache_creation_tokens|effective_tokens)$"
             }
           }
         },
@@ -960,7 +1222,7 @@
           "options": {
             "conversions": [
               {
-                "targetField": "cost_usd",
+                "targetField": "cost_recalc",
                 "destinationType": "number"
               },
               {
@@ -993,6 +1255,56 @@
               }
             ]
           }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "cache_creation_tokens",
+              "operator": "+",
+              "right": "cache_read_tokens"
+            },
+            "alias": "_den",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": "cache_creation_tokens",
+              "operator": "/",
+              "right": "_den"
+            },
+            "alias": "再作成率",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "_den": true
+            },
+            "renameByName": {},
+            "indexByName": {
+              "Time": 0,
+              "query_source": 1,
+              "model": 2,
+              "effort": 3,
+              "再作成率": 4,
+              "cache_read_tokens": 5,
+              "cache_creation_tokens": 6,
+              "input_tokens": 7,
+              "output_tokens": 8,
+              "context_tokens": 9,
+              "cost_recalc": 10,
+              "duration_ms": 11,
+              "effective_tokens": 12
+            }
+          }
         }
       ],
       "options": {
@@ -1013,7 +1325,23 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "cost_usd"
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:MM/DD HH:mm:ss"
+              },
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cost_recalc"
             },
             "properties": [
               {
@@ -1023,6 +1351,72 @@
               {
                 "id": "decimals",
                 "value": 4
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "再作成率"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.4
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.7
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "duration_ms"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
               }
             ]
           }

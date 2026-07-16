@@ -10,7 +10,7 @@
   "version": 1,
   "editable": true,
   "graphTooltip": 0,
-  "refresh": "30s",
+  "refresh": "1m",
   "time": {
     "from": "now-7d",
     "to": "now"

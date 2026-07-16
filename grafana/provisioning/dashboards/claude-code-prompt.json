@@ -443,7 +443,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{event_name=\"user_prompt\"} | prompt_id=\"$prompt_id\"",
+          "expr": "{event_name=\"user_prompt\"} | prompt_id=\"$prompt_id\" | label_format body=`{{ printf \"\\n%s\\n\u00a0\" .prompt }}`",
           "datasource": {
             "type": "loki",
             "uid": "loki"
@@ -463,7 +463,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "pattern": "^(prompt)$"
+              "pattern": "^(body)$"
             }
           }
         }
@@ -481,7 +481,7 @@
         "overrides": []
       },
       "options": {
-        "cellHeight": "sm",
+        "cellHeight": "md",
         "footer": {
           "show": false
         },
